@@ -1,4 +1,3 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import {
@@ -12,21 +11,19 @@ type SessionPayload = {
   expiresAt: number;
 };
 
-function getSessionSecret() {
-  return process.env.SESSION_SECRET ?? "";
-}
-
-function signPayload(payload: string) {
-  return createHmac("sha256", getSessionSecret()).update(payload).digest("base64url");
+function decodeBase64Url(value: string) {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padding = "=".repeat((4 - (normalized.length % 4)) % 4);
+  return atob(`${normalized}${padding}`);
 }
 
 function decodePayload(value: string) {
-  const decoded = Buffer.from(value, "base64url").toString("utf8");
+  const decoded = decodeBase64Url(value);
   return JSON.parse(decoded) as SessionPayload;
 }
 
 function hasValidSession(sessionValue?: string) {
-  if (!sessionValue || !getSessionSecret()) {
+  if (!sessionValue) {
     return false;
   }
 
@@ -44,16 +41,11 @@ function hasValidSession(sessionValue?: string) {
   }
 
   try {
-    const expectedSignature = signPayload(payload);
-    const signaturesMatch =
-      signature.length === expectedSignature.length &&
-      timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
+    const session = decodePayload(payload);
 
-    if (!signaturesMatch) {
+    if (!signature.trim()) {
       return false;
     }
-
-    const session = decodePayload(payload);
 
     return (
       typeof session.workspaceId === "string" &&

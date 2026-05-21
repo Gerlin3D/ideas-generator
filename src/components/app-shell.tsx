@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { logoutAction } from "@/app/actions";
+import { getCurrentWorkspaceId } from "@/lib/auth/session";
 import { cn } from "@/lib/utils";
 
 type AppShellProps = {
@@ -7,9 +9,12 @@ type AppShellProps = {
   children?: React.ReactNode;
 };
 
-const navigation = [
+const publicNavigation = [
   { href: "/login", label: "Login" },
   { href: "/create-workspace", label: "Create Workspace" },
+];
+
+const privateNavigation = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/profile", label: "Profile" },
   { href: "/generate", label: "Generate" },
@@ -17,7 +22,10 @@ const navigation = [
   { href: "/usage", label: "Usage" },
 ];
 
-export function AppShell({ title, description, children }: AppShellProps) {
+export async function AppShell({ title, description, children }: AppShellProps) {
+  const workspaceId = await getCurrentWorkspaceId();
+  const navigation = workspaceId ? privateNavigation : publicNavigation;
+
   return (
     <div className="min-h-screen bg-background bg-lab-grid text-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-6 py-8 lg:px-10">
@@ -44,6 +52,19 @@ export function AppShell({ title, description, children }: AppShellProps) {
                 {item.label}
               </Link>
             ))}
+
+            {workspaceId ? (
+              <form action={logoutAction}>
+                <button
+                  type="submit"
+                  className={cn(
+                    "rounded-full border border-slate-800/80 bg-slate-950/60 px-4 py-2 text-sm text-slate-300 transition hover:border-sky-400/30 hover:text-white",
+                  )}
+                >
+                  Logout
+                </button>
+              </form>
+            ) : null}
           </nav>
         </header>
 

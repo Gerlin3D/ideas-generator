@@ -235,7 +235,7 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
               {idea.versions.length === 0 ? (
                 <p className="text-sm text-slate-400">No versions saved yet.</p>
               ) : (
-                idea.versions.map((version) => (
+                idea.versions.map((version: (typeof idea.versions)[number]) => (
                   <div
                     key={version.id}
                     className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-4"

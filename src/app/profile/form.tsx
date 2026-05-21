@@ -2,11 +2,16 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import { initialState, updateProfileAction } from "@/app/profile/actions";
+import { updateProfileAction } from "@/app/profile/actions";
 import {
   budgetLevelOptions,
   riskLevelOptions,
 } from "@/lib/validation/forms";
+
+const initialState = {
+  error: null,
+  success: null,
+};
 
 type ProfileFormValues = {
   description: string;

@@ -2,10 +2,11 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import {
-  createWorkspaceAction,
-  initialState,
-} from "@/app/create-workspace/actions";
+import { createWorkspaceAction } from "@/app/create-workspace/actions";
+
+const initialState = {
+  error: null,
+};
 
 function SubmitButton() {
   const { pending } = useFormStatus();
