@@ -1,7 +1,10 @@
 import { AppShell } from "@/components/app-shell";
 import { RouteCard } from "@/components/route-card";
+import { requireWorkspaceSession } from "@/lib/auth/session";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  await requireWorkspaceSession();
+
   return (
     <AppShell
       title="Dashboard"

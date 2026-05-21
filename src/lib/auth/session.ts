@@ -1,7 +1,9 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { SESSION_COOKIE_NAME } from "@/lib/auth/config";
+import { prisma } from "@/lib/prisma";
 
-const SESSION_COOKIE_NAME = "ideas_generator_session";
 const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 30;
 
 type SessionPayload = {
@@ -47,28 +49,47 @@ export function readSessionValue(sessionValue?: string | null) {
     return null;
   }
 
-  const [payload, signature] = sessionValue.split(".");
+  const separatorIndex = sessionValue.lastIndexOf(".");
+
+  if (separatorIndex === -1) {
+    return null;
+  }
+
+  const payload = sessionValue.slice(0, separatorIndex);
+  const signature = sessionValue.slice(separatorIndex + 1);
 
   if (!payload || !signature) {
     return null;
   }
 
-  const expectedSignature = signPayload(payload);
-  const signaturesMatch =
-    signature.length === expectedSignature.length &&
-    timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
+  try {
+    const expectedSignature = signPayload(payload);
+    const signaturesMatch =
+      signature.length === expectedSignature.length &&
+      timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
 
-  if (!signaturesMatch) {
+    if (!signaturesMatch) {
+      return null;
+    }
+
+    const session = decodePayload(payload);
+
+    if (
+      !session.workspaceId ||
+      typeof session.workspaceId !== "string" ||
+      typeof session.expiresAt !== "number"
+    ) {
+      return null;
+    }
+
+    if (session.expiresAt <= Math.floor(Date.now() / 1000)) {
+      return null;
+    }
+
+    return session;
+  } catch {
     return null;
   }
-
-  const session = decodePayload(payload);
-
-  if (session.expiresAt <= Math.floor(Date.now() / 1000)) {
-    return null;
-  }
-
-  return session;
 }
 
 export async function setWorkspaceSession(workspaceId: string) {
@@ -93,4 +114,28 @@ export async function getCurrentWorkspaceId() {
   const session = readSessionValue(cookieStore.get(SESSION_COOKIE_NAME)?.value);
 
   return session?.workspaceId ?? null;
+}
+
+export async function requireWorkspaceSession() {
+  const workspaceId = await getCurrentWorkspaceId();
+
+  if (!workspaceId) {
+    redirect("/login");
+  }
+
+  const workspace = await prisma.workspace.findUnique({
+    where: {
+      id: workspaceId,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!workspace) {
+    await clearWorkspaceSession();
+    redirect("/login");
+  }
+
+  return workspaceId;
 }
