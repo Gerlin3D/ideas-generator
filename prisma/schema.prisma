@@ -1,0 +1,154 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Workspace {
+  id                      String       @id @default(cuid())
+  name                    String       @unique
+  passwordHash            String
+  description             String?
+  skills                  String[]
+  interests               String[]
+  goals                   String[]
+  constraints             String[]
+  preferredMarkets        String[]
+  preferredBusinessModels String[]
+  budgetLevel             BudgetLevel?
+  riskLevel               RiskLevel?
+  availableTime           String?
+  additionalContext       String?
+  monthlyBudgetUsd        Float?
+  ideas                   Idea[]
+  aiUsageLogs             AiUsageLog[]
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+}
+
+model Idea {
+  id               String      @id @default(cuid())
+  workspaceId      String
+  workspace        Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title            String
+  shortDescription String
+  category         String?
+  status           IdeaStatus  @default(NEW)
+  currentVersionId String?
+  currentVersion   IdeaVersion? @relation("CurrentIdeaVersion", fields: [currentVersionId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  versions         IdeaVersion[] @relation("IdeaVersions")
+  aiUsageLogs      AiUsageLog[]
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@index([workspaceId, createdAt])
+  @@index([workspaceId, status])
+}
+
+model IdeaVersion {
+  id                String        @id @default(cuid())
+  ideaId            String
+  idea              Idea          @relation("IdeaVersions", fields: [ideaId], references: [id], onDelete: Cascade)
+  currentForIdeas   Idea[]        @relation("CurrentIdeaVersion")
+  versionNumber     Int
+  type              IdeaVersionType
+  title             String
+  shortDescription  String
+  fullDescription   String?
+  category          String?
+  targetAudience    String?
+  problem           String?
+  solution          String?
+  monetization      String[]
+  mvpFeatures       String[]
+  risks             String[]
+  firstSteps        String[]
+  overallScore      Float?
+  marketScore       Float?
+  feasibilityScore  Float?
+  monetizationScore Float?
+  personalFitScore  Float?
+  rawAiResponse     Json?
+  aiUsageLogs       AiUsageLog[]
+  createdAt         DateTime      @default(now())
+
+  @@unique([ideaId, versionNumber])
+  @@index([ideaId, createdAt])
+}
+
+model AiUsageLog {
+  id                String          @id @default(cuid())
+  workspaceId       String
+  workspace         Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  ideaId            String?
+  idea              Idea?           @relation(fields: [ideaId], references: [id], onDelete: SetNull)
+  ideaVersionId     String?
+  ideaVersion       IdeaVersion?    @relation(fields: [ideaVersionId], references: [id], onDelete: SetNull)
+  operationType     AiOperationType
+  agentName         String?
+  provider          String
+  model             String
+  promptTokens      Int?
+  completionTokens  Int?
+  totalTokens       Int?
+  estimatedCostUsd  Float?
+  providerRequestId String?
+  status            AiRequestStatus
+  errorMessage      String?
+  createdAt         DateTime        @default(now())
+
+  @@index([workspaceId, createdAt])
+  @@index([ideaId])
+  @@index([ideaVersionId])
+}
+
+enum BudgetLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum IdeaStatus {
+  NEW
+  INTERESTING
+  RESEARCHING
+  VALIDATING
+  BUILDING
+  PAUSED
+  DONE
+  REJECTED
+}
+
+enum IdeaVersionType {
+  INITIAL
+  REFINED
+  REALITY_CHECK
+  MVP_CONCEPT
+  ROADMAP
+  COMBINED
+}
+
+enum AiOperationType {
+  GENERATE_IDEAS
+  REFINE_IDEA
+  REALITY_CHECK
+  MVP_CONCEPT
+  ROADMAP
+  COMBINE_IDEAS
+  MARKET_RESEARCH
+  FINAL_RANKING
+}
+
+enum AiRequestStatus {
+  SUCCESS
+  FAILED
+}
