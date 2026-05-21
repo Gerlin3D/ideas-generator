@@ -4,6 +4,11 @@ import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { setWorkspaceSession } from "@/lib/auth/session";
+import {
+  createWorkspaceSchema,
+  getFirstZodErrorMessage,
+  getFormDataStrings,
+} from "@/lib/validation/forms";
 
 export type CreateWorkspaceState = {
   error: string | null;
@@ -13,35 +18,24 @@ const initialState: CreateWorkspaceState = {
   error: null,
 };
 
-function getString(formData: FormData, key: string) {
-  const value = formData.get(key);
-  return typeof value === "string" ? value.trim() : "";
-}
-
 export async function createWorkspaceAction(
   _prevState: CreateWorkspaceState,
   formData: FormData,
 ): Promise<CreateWorkspaceState> {
-  const name = getString(formData, "name");
-  const password = getString(formData, "password");
-  const confirmPassword = getString(formData, "confirmPassword");
-  const creationCode = getString(formData, "creationCode");
+  const validationResult = createWorkspaceSchema.safeParse(
+    getFormDataStrings(formData, [
+      "name",
+      "password",
+      "confirmPassword",
+      "creationCode",
+    ] as const),
+  );
 
-  if (!name || !password || !confirmPassword || !creationCode) {
-    return { error: "Complete all fields to create a workspace." };
+  if (!validationResult.success) {
+    return { error: getFirstZodErrorMessage(validationResult.error) };
   }
 
-  if (name.length < 3) {
-    return { error: "Workspace name must be at least 3 characters long." };
-  }
-
-  if (password.length < 8) {
-    return { error: "Password must be at least 8 characters long." };
-  }
-
-  if (password !== confirmPassword) {
-    return { error: "Password confirmation does not match." };
-  }
+  const { name, password, creationCode } = validationResult.data;
 
   if (!process.env.PROFILE_CREATION_CODE) {
     return { error: "PROFILE_CREATION_CODE is not configured on the server." };
