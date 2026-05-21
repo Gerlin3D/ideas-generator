@@ -1,17 +1,67 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { RouteCard } from "@/components/route-card";
+import { CreateWorkspaceForm } from "@/app/create-workspace/form";
+import { getCurrentWorkspaceId } from "@/lib/auth/session";
 
-export default function CreateWorkspacePage() {
+export default async function CreateWorkspacePage() {
+  const workspaceId = await getCurrentWorkspaceId();
+
+  if (workspaceId) {
+    redirect("/profile");
+  }
+
   return (
     <AppShell
       title="Create Workspace"
-      description="Private workspace creation will be protected by PROFILE_CREATION_CODE and will auto-login after successful setup."
+      description="Create a private idea workspace with a protected creation code. Successful setup signs you in immediately and moves you into profile configuration."
     >
-      <RouteCard
-        eyebrow="/create-workspace"
-        title="Workspace Provisioning"
-        description="The database and environment placeholders are now in place so we can implement hashing, creation code validation, and the initial profile redirect next."
-      />
+      <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+        <section className="rounded-[24px] border border-border bg-card/80 p-6 shadow-panel backdrop-blur">
+          <p className="text-xs uppercase tracking-[0.24em] text-sky-200/80">
+            /create-workspace
+          </p>
+          <h2 className="mt-3 text-2xl font-semibold text-white">
+            Provision a private workspace
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
+            Access is gated by a private creation code. Passwords are hashed on
+            the server, and a signed `httpOnly` session cookie is created
+            automatically after the workspace is saved.
+          </p>
+
+          <div className="mt-8">
+            <CreateWorkspaceForm />
+          </div>
+        </section>
+
+        <div className="grid gap-6">
+          <RouteCard
+            eyebrow="Security"
+            title="Private-first flow"
+            description="This setup avoids public signup, keeps credentials server-side, and prepares the exact workspace session model we will reuse for login and protected pages."
+          />
+          <section className="rounded-[24px] border border-border bg-card/80 p-6 shadow-panel backdrop-blur">
+            <p className="text-xs uppercase tracking-[0.24em] text-sky-200/80">
+              Existing workspace?
+            </p>
+            <h2 className="mt-3 text-xl font-semibold text-white">
+              Continue to login
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-slate-300">
+              If the workspace already exists, use the private login flow
+              instead.
+            </p>
+            <Link
+              href="/login"
+              className="mt-5 inline-flex rounded-full border border-slate-800/80 bg-slate-950/60 px-4 py-2 text-sm text-slate-200 transition hover:border-sky-400/30 hover:text-white"
+            >
+              Go to login
+            </Link>
+          </section>
+        </div>
+      </div>
     </AppShell>
   );
 }
