@@ -1,9 +1,11 @@
 import { AppShell } from "@/components/app-shell";
 import { IdeaStatusBadge } from "@/components/idea-status-badge";
 import { IdeaVersionBadge } from "@/components/idea-version-badge";
+import { IdeaActions } from "@/app/ideas/[id]/idea-actions";
 import { formatDate, formatEnumLabel, getCurrentIdeaVersion } from "@/lib/ideas";
 import { requireWorkspaceSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { getIdeaUsageStats } from "@/lib/usage-stats";
 import { notFound } from "next/navigation";
 
 type IdeaDetailPageProps = {
@@ -84,6 +86,7 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
     notFound();
   }
 
+  const ideaUsage = await getIdeaUsageStats(workspaceId, idea.id);
   const currentVersion = getCurrentIdeaVersion(idea);
 
   function DetailList({
@@ -274,6 +277,45 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
               </div>
             </div>
           </section>
+
+          <section className="rounded-[24px] border border-border bg-card/80 p-6 shadow-panel backdrop-blur">
+            <h2 className="text-lg font-semibold text-white">AI usage</h2>
+            <div className="mt-4 grid gap-3 text-sm text-slate-300">
+              <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 px-4 py-3">
+                Requests: {ideaUsage.totals.requests}
+              </div>
+              <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 px-4 py-3">
+                Tokens: {ideaUsage.totals.tokens.toLocaleString()}
+              </div>
+              <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 px-4 py-3">
+                Estimated cost: ${ideaUsage.totals.cost.toFixed(4)}
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3">
+              {ideaUsage.logs.length === 0 ? (
+                <p className="text-sm text-slate-400">No usage logs for this idea yet.</p>
+              ) : (
+                ideaUsage.logs.map((log) => (
+                  <div
+                    key={log.id}
+                    className="rounded-2xl border border-slate-800/80 bg-slate-950/60 px-4 py-3 text-sm text-slate-300"
+                  >
+                    <p className="font-medium text-white">
+                      {formatEnumLabel(log.operationType)} · {log.agentName ?? "agent"} · {log.provider} / {log.model}
+                    </p>
+                    <p className="mt-2">
+                      {log.totalTokens ?? 0} tokens · ${(
+                        log.estimatedCostUsd ?? 0
+                      ).toFixed(4)} · {log.status}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+
+          <IdeaActions ideaId={idea.id} />
         </div>
       </div>
     </AppShell>

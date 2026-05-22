@@ -1,4 +1,11 @@
-import type { GenerateIdeasInput, WorkspaceContext } from "@/lib/ai/types";
+import type {
+  GenerateIdeasInput,
+  GenerateMvpConceptInput,
+  IdeaContext,
+  RealityCheckInput,
+  RefineIdeaInput,
+  WorkspaceContext,
+} from "@/lib/ai/types";
 
 const BASE_SYSTEM_PROMPT = `You are an expert business idea analyst, startup strategist, product thinker, and practical MVP advisor.
 
@@ -47,6 +54,26 @@ export function buildWorkspaceContextBlock(workspace: WorkspaceContext) {
   ].join("\n");
 }
 
+function formatIdeaContext(idea: IdeaContext) {
+  return `Title: ${idea.title}
+Short description: ${idea.shortDescription}
+Full description: ${formatOptional(idea.fullDescription)}
+Category: ${formatOptional(idea.category)}
+Target audience: ${formatOptional(idea.targetAudience)}
+Problem: ${formatOptional(idea.problem)}
+Solution: ${formatOptional(idea.solution)}
+Monetization: ${formatList(idea.monetization)}
+MVP features: ${formatList(idea.mvpFeatures)}
+Risks: ${formatList(idea.risks)}
+First steps: ${formatList(idea.firstSteps)}
+Scores:
+- overall: ${idea.scores.overall}
+- market: ${idea.scores.market}
+- feasibility: ${idea.scores.feasibility}
+- monetization: ${idea.scores.monetization}
+- personalFit: ${idea.scores.personalFit}`;
+}
+
 export function getBaseSystemPrompt() {
   return BASE_SYSTEM_PROMPT;
 }
@@ -67,6 +94,142 @@ Return JSON only.
 
 Return an array of ideas. Each idea must have this structure:
 
+{
+  "title": "string",
+  "shortDescription": "string",
+  "fullDescription": "string",
+  "category": "string",
+  "targetAudience": "string",
+  "problem": "string",
+  "solution": "string",
+  "monetization": ["string"],
+  "mvpFeatures": ["string"],
+  "risks": ["string"],
+  "firstSteps": ["string"],
+  "scores": {
+    "overall": 1-10,
+    "market": 1-10,
+    "feasibility": 1-10,
+    "monetization": 1-10,
+    "personalFit": 1-10
+  }
+}`;
+}
+
+export function buildRefineIdeaPrompt(input: RefineIdeaInput) {
+  return `Refine this business idea and make it more realistic, specific, and useful.
+
+Workspace context:
+${buildWorkspaceContextBlock(input.workspace)}
+
+Current idea:
+${formatIdeaContext(input.idea)}
+
+User refinement request:
+${input.customPrompt?.trim() || "Not specified"}
+
+Focus on:
+- clearer target audience
+- sharper problem
+- more realistic MVP
+- faster validation
+- better monetization
+- risks and weak points
+- first steps for the next 7 days
+
+Return JSON only using this exact shape:
+{
+  "title": "string",
+  "shortDescription": "string",
+  "fullDescription": "string",
+  "category": "string",
+  "targetAudience": "string",
+  "problem": "string",
+  "solution": "string",
+  "monetization": ["string"],
+  "mvpFeatures": ["string"],
+  "risks": ["string"],
+  "firstSteps": ["string"],
+  "scores": {
+    "overall": 1-10,
+    "market": 1-10,
+    "feasibility": 1-10,
+    "monetization": 1-10,
+    "personalFit": 1-10
+  }
+}`;
+}
+
+export function buildMvpConceptPrompt(input: GenerateMvpConceptInput) {
+  return `Turn this idea into a practical MVP concept.
+
+Workspace context:
+${buildWorkspaceContextBlock(input.workspace)}
+
+Idea:
+${formatIdeaContext(input.idea)}
+
+Additional MVP request:
+${input.customPrompt?.trim() || "Not specified"}
+
+Create a detailed MVP concept with:
+- sharper target audience
+- stronger value proposition
+- practical MVP feature list
+- validation-first scope
+- development roadmap
+- realistic monetization
+- first 7 days action plan
+
+Return JSON only using this exact shape:
+{
+  "title": "string",
+  "shortDescription": "string",
+  "fullDescription": "string",
+  "category": "string",
+  "targetAudience": "string",
+  "problem": "string",
+  "solution": "string",
+  "monetization": ["string"],
+  "mvpFeatures": ["string"],
+  "risks": ["string"],
+  "firstSteps": ["string"],
+  "scores": {
+    "overall": 1-10,
+    "market": 1-10,
+    "feasibility": 1-10,
+    "monetization": 1-10,
+    "personalFit": 1-10
+  }
+}`;
+}
+
+export function buildRealityCheckPrompt(input: RealityCheckInput) {
+  return `Perform a harsh but constructive reality check for this idea.
+
+Workspace context:
+${buildWorkspaceContextBlock(input.workspace)}
+
+Idea:
+${formatIdeaContext(input.idea)}
+
+Additional instructions:
+${input.customPrompt?.trim() || "Not specified"}
+
+Analyze:
+- why this idea may fail
+- whether people would really pay for it
+- possible competitors or substitutes
+- biggest assumptions
+- hardest part of execution
+- cheapest validation test
+- signs that the idea should be killed
+- signs that the idea is worth continuing
+- how to simplify the idea
+
+Be direct and practical.
+
+Return JSON only using this exact shape:
 {
   "title": "string",
   "shortDescription": "string",

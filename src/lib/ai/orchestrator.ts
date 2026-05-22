@@ -4,15 +4,23 @@ import { buildCriticPrompt } from "@/lib/ai/agents/criticAgent";
 import { buildDreamerPrompt } from "@/lib/ai/agents/dreamerAgent";
 import { buildFinalEditorPrompt } from "@/lib/ai/agents/finalEditorAgent";
 import { buildInvestorPrompt } from "@/lib/ai/agents/investorAgent";
-import { getBaseSystemPrompt } from "@/lib/ai/prompts";
+import {
+  buildMvpConceptPrompt,
+  buildRealityCheckPrompt,
+  buildRefineIdeaPrompt,
+  getBaseSystemPrompt,
+} from "@/lib/ai/prompts";
 import { runOpenRouterTextGeneration } from "@/lib/ai/providers/openrouterProvider";
 import {
   AI_MODELS,
   type AgentName,
   type AgentRunResult,
+  type GenerateMvpConceptInput,
   type GenerateIdeasInput,
   type GenerateIdeasResult,
   type GeneratedIdea,
+  type RealityCheckInput,
+  type RefineIdeaInput,
 } from "@/lib/ai/types";
 import { combineUsage, createAiUsageLog, estimateCostUsd } from "@/lib/ai/usage";
 
@@ -98,6 +106,20 @@ function parseIdeasFromResponse(text: string) {
   }
 
   throw new Error("AI response did not contain an ideas array.");
+}
+
+function parseIdeaFromResponse(text: string) {
+  const parsed = JSON.parse(extractJsonCandidate(text)) as unknown;
+
+  if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+    return normalizeIdea(parsed);
+  }
+
+  if (Array.isArray(parsed) && parsed.length > 0) {
+    return normalizeIdea(parsed[0]);
+  }
+
+  throw new Error("AI response did not contain a valid idea object.");
 }
 
 async function runAgent(
@@ -200,4 +222,93 @@ export async function generateIdeas(
     model: finalEditor.model,
     rawText: finalEditor.text,
   };
+}
+
+async function runSingleIdeaOperation(
+  operationType: AiOperationType,
+  prompt: string,
+  input: RefineIdeaInput | GenerateMvpConceptInput,
+) {
+  const modelConfig = AI_MODELS[input.depth];
+
+  try {
+    const response = await runOpenRouterTextGeneration({
+      modelConfig,
+      messages: [
+        { role: "system", content: getBaseSystemPrompt() },
+        { role: "user", content: prompt },
+      ],
+      temperature: input.depth === "free" ? 0.8 : 0.7,
+      maxOutputTokens: 2800,
+      requireJsonResponse: true,
+    });
+
+    const idea = parseIdeaFromResponse(response.text);
+    const estimatedCostUsd =
+      response.usage.estimatedCostUsd ?? estimateCostUsd(response.usage, modelConfig);
+
+    await createAiUsageLog({
+      workspaceId: input.workspace.id,
+      operationType,
+      provider: response.provider,
+      model: response.model,
+      status: "SUCCESS",
+      promptTokens: response.usage.promptTokens ?? null,
+      completionTokens: response.usage.completionTokens ?? null,
+      totalTokens: response.usage.totalTokens ?? null,
+      estimatedCostUsd,
+      providerRequestId: response.usage.providerRequestId ?? null,
+      agentName: "finalEditor",
+    });
+
+    return {
+      idea,
+      usage: {
+        ...response.usage,
+        estimatedCostUsd,
+      },
+      provider: response.provider,
+      model: response.model,
+      rawText: response.text,
+    };
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown AI generation failure.";
+
+    await createAiUsageLog({
+      workspaceId: input.workspace.id,
+      operationType,
+      provider: modelConfig.provider,
+      model: modelConfig.model,
+      status: "FAILED",
+      errorMessage,
+      agentName: "finalEditor",
+    });
+
+    throw error;
+  }
+}
+
+export async function refineIdea(input: RefineIdeaInput) {
+  return runSingleIdeaOperation(
+    AiOperationType.REFINE_IDEA,
+    buildRefineIdeaPrompt(input),
+    input,
+  );
+}
+
+export async function generateMvpConcept(input: GenerateMvpConceptInput) {
+  return runSingleIdeaOperation(
+    AiOperationType.MVP_CONCEPT,
+    buildMvpConceptPrompt(input),
+    input,
+  );
+}
+
+export async function realityCheck(input: RealityCheckInput) {
+  return runSingleIdeaOperation(
+    AiOperationType.REALITY_CHECK,
+    buildRealityCheckPrompt(input),
+    input,
+  );
 }

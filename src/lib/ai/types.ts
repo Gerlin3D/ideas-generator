@@ -57,6 +57,42 @@ export type GenerateIdeasInput = {
   customPrompt?: string;
 };
 
+export type IdeaContext = {
+  title: string;
+  shortDescription: string;
+  fullDescription?: string | null;
+  category?: string | null;
+  targetAudience?: string | null;
+  problem?: string | null;
+  solution?: string | null;
+  monetization: string[];
+  mvpFeatures: string[];
+  risks: string[];
+  firstSteps: string[];
+  scores: IdeaScores;
+};
+
+export type RefineIdeaInput = {
+  workspace: WorkspaceContext;
+  idea: IdeaContext;
+  depth: AiDepth;
+  customPrompt?: string;
+};
+
+export type GenerateMvpConceptInput = {
+  workspace: WorkspaceContext;
+  idea: IdeaContext;
+  depth: AiDepth;
+  customPrompt?: string;
+};
+
+export type RealityCheckInput = {
+  workspace: WorkspaceContext;
+  idea: IdeaContext;
+  depth: AiDepth;
+  customPrompt?: string;
+};
+
 export type AiModelConfig = {
   provider: "openrouter";
   model: string;
