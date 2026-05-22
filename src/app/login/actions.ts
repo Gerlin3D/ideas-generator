@@ -64,4 +64,3 @@ export async function loginAction(
 
   redirect("/dashboard");
 }
-export { INVALID_CREDENTIALS_ERROR };

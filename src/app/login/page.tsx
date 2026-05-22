@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AppShell } from "@/components/app-shell";
+import { PublicShell } from "@/components/public-shell";
 import { RouteCard } from "@/components/route-card";
 import { LoginForm } from "@/app/login/form";
 import { getCurrentWorkspaceId } from "@/lib/auth/session";
@@ -13,7 +13,7 @@ export default async function LoginPage() {
   }
 
   return (
-    <AppShell
+    <PublicShell
       title="Ideas Generator"
       description="Enter your private idea workspace. The login flow is private-first, uses signed httpOnly sessions, and returns only a generic auth error when credentials do not match."
     >
@@ -61,6 +61,6 @@ export default async function LoginPage() {
           </section>
         </div>
       </div>
-    </AppShell>
+    </PublicShell>
   );
 }

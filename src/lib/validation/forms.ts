@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AI_DEPTHS, MARKET_FOCUS_VALUES } from "@/lib/ai/types";
 
 export const INVALID_CREDENTIALS_ERROR = "Invalid workspace name or password";
 export const budgetLevelOptions = ["LOW", "MEDIUM", "HIGH"] as const;
@@ -85,6 +86,38 @@ export const profileSchema = z.object({
 
       return parsedValue;
     }),
+});
+
+export const generateIdeasSchema = z.object({
+  numberOfIdeas: z
+    .string()
+    .transform((value, context) => {
+      const parsedValue = Number(value);
+
+      if (!Number.isInteger(parsedValue) || parsedValue < 1 || parsedValue > 10) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Number of ideas must be between 1 and 10.",
+        });
+        return z.NEVER;
+      }
+
+      return parsedValue;
+    }),
+  category: z
+    .string()
+    .transform((value) => value.trim())
+    .transform((value) => (value.length > 0 ? value : undefined)),
+  marketFocus: z.enum(MARKET_FOCUS_VALUES, {
+    message: "Select a valid market focus.",
+  }),
+  depth: z.enum(AI_DEPTHS, {
+    message: "Select a valid AI depth.",
+  }),
+  customPrompt: z
+    .string()
+    .transform((value) => value.trim())
+    .transform((value) => (value.length > 0 ? value : undefined)),
 });
 
 export function getFormDataStrings<TField extends string>(

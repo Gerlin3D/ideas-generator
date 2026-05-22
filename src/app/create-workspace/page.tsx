@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AppShell } from "@/components/app-shell";
+import { PublicShell } from "@/components/public-shell";
 import { RouteCard } from "@/components/route-card";
 import { CreateWorkspaceForm } from "@/app/create-workspace/form";
 import { getCurrentWorkspaceId } from "@/lib/auth/session";
@@ -13,7 +13,7 @@ export default async function CreateWorkspacePage() {
   }
 
   return (
-    <AppShell
+    <PublicShell
       title="Create Workspace"
       description="Create a private idea workspace with a protected creation code. Successful setup signs you in immediately and moves you into profile configuration."
     >
@@ -62,6 +62,6 @@ export default async function CreateWorkspacePage() {
           </section>
         </div>
       </div>
-    </AppShell>
+    </PublicShell>
   );
 }
