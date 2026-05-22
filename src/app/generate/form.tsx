@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
+import { AnimatedBorderButton } from "@/components/animated-border-button";
 import { AI_DEPTHS, MARKET_FOCUS_VALUES } from "@/lib/ai/types";
 import { generateIdeasAction } from "@/app/generate/actions";
 
@@ -13,13 +14,13 @@ function SubmitButton() {
   const { pending } = useFormStatus();
 
   return (
-    <button
+    <AnimatedBorderButton
       type="submit"
       disabled={pending}
-      className="inline-flex items-center justify-center rounded-full bg-sky-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-300 disabled:cursor-not-allowed disabled:opacity-70"
+      borderActive={pending}
     >
       {pending ? "Generating ideas..." : "Generate Ideas"}
-    </button>
+    </AnimatedBorderButton>
   );
 }
 

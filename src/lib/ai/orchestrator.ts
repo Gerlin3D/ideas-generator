@@ -147,6 +147,65 @@ function parseIdeaFromResponse(text: string) {
   throw new Error("AI response did not contain a valid idea object.");
 }
 
+async function repairJsonWithAi(
+  text: string,
+  modelConfig: (typeof AI_MODELS)[keyof typeof AI_MODELS],
+  expectedTopLevel: "ideas" | "idea",
+) {
+  const response = await runOpenRouterTextGeneration({
+    modelConfig,
+    messages: [
+      {
+        role: "system",
+        content:
+          "You repair malformed JSON. Return only valid JSON with no markdown, no comments, and no explanation.",
+      },
+      {
+        role: "user",
+        content: `Repair this malformed JSON so it becomes valid JSON without changing the meaning.
+
+Expected top-level shape: ${
+          expectedTopLevel === "ideas"
+            ? '{ "ideas": [ { "title": "string", "shortDescription": "string", "fullDescription": "string", "category": "string", "targetAudience": "string", "problem": "string", "solution": "string", "monetization": ["string"], "mvpFeatures": ["string"], "risks": ["string"], "firstSteps": ["string"], "scores": { "overall": 1, "market": 1, "feasibility": 1, "monetization": 1, "personalFit": 1 } } ] }'
+            : '{ "title": "string", "shortDescription": "string", "fullDescription": "string", "category": "string", "targetAudience": "string", "problem": "string", "solution": "string", "monetization": ["string"], "mvpFeatures": ["string"], "risks": ["string"], "firstSteps": ["string"], "scores": { "overall": 1, "market": 1, "feasibility": 1, "monetization": 1, "personalFit": 1 } }'
+        }
+
+Malformed JSON:
+${extractJsonCandidate(text)}`,
+      },
+    ],
+    temperature: 0,
+    maxOutputTokens: 2200,
+    requireJsonResponse: modelConfig.model !== "openrouter/free",
+  });
+
+  return response.text;
+}
+
+async function parseIdeasWithRepair(
+  text: string,
+  modelConfig: (typeof AI_MODELS)[keyof typeof AI_MODELS],
+) {
+  try {
+    return parseIdeasFromResponse(text);
+  } catch {
+    const repairedText = await repairJsonWithAi(text, modelConfig, "ideas");
+    return parseIdeasFromResponse(repairedText);
+  }
+}
+
+async function parseIdeaWithRepair(
+  text: string,
+  modelConfig: (typeof AI_MODELS)[keyof typeof AI_MODELS],
+) {
+  try {
+    return parseIdeaFromResponse(text);
+  } catch {
+    const repairedText = await repairJsonWithAi(text, modelConfig, "idea");
+    return parseIdeaFromResponse(repairedText);
+  }
+}
+
 async function runAgent(
   agentName: AgentName,
   prompt: string,
@@ -241,7 +300,7 @@ export async function generateIdeas(
     input,
   );
 
-  const ideas = parseIdeasFromResponse(finalEditor.text);
+  const ideas = await parseIdeasWithRepair(finalEditor.text, AI_MODELS[input.depth]);
   const usage = combineUsage(
     ...[dreamer, builder, investor, critic, finalEditor].map(
       (result) => result.usage,
@@ -276,7 +335,7 @@ async function runSingleIdeaOperation(
       requireJsonResponse: input.depth !== "free",
     });
 
-    const idea = parseIdeaFromResponse(response.text);
+    const idea = await parseIdeaWithRepair(response.text, modelConfig);
     const estimatedCostUsd =
       response.usage.estimatedCostUsd ?? estimateCostUsd(response.usage, modelConfig);
 

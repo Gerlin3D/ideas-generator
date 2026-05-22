@@ -79,6 +79,11 @@ export function getBaseSystemPrompt() {
 }
 
 export function buildGenerateIdeasPrompt(input: GenerateIdeasInput) {
+  const hasCategory = Boolean(input.category?.trim());
+  const hasCustomPrompt = Boolean(input.customPrompt?.trim());
+  const fallbackRequest =
+    "Generate practical low-budget business ideas with clear monetization, fast validation potential, and room for either offline, online, or hybrid execution.";
+
   return `Generate ${input.numberOfIdeas} money-making ideas for this workspace.
 
 Workspace context:
@@ -89,6 +94,12 @@ Idea type/category: ${input.category?.trim() || "Not specified"}
 Market focus: ${input.marketFocus}
 AI depth: ${input.depth}
 Custom request: ${input.customPrompt?.trim() || "Not specified"}
+Fallback request when optional fields are blank: ${
+    !hasCategory && !hasCustomPrompt ? fallbackRequest : "Not needed"
+  }
+
+If both "Idea type/category" and "Custom request" are not specified, use this fallback direction:
+${fallbackRequest}
 
 Return JSON only.
 
