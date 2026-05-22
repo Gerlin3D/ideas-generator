@@ -55,6 +55,31 @@ function extractJsonCandidate(text: string) {
   return trimmed;
 }
 
+function sanitizeLooseJson(json: string) {
+  return json
+    .replace(/^\uFEFF/, "")
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/([{,]\s*)([A-Za-z_][A-Za-z0-9_]*)(\s*:)/g, '$1"$2"$3')
+    .replace(/,\s*([}\]])/g, "$1");
+}
+
+function parseJsonResponse(text: string) {
+  const candidate = extractJsonCandidate(text);
+
+  try {
+    return JSON.parse(candidate) as unknown;
+  } catch (initialError) {
+    const sanitized = sanitizeLooseJson(candidate);
+
+    try {
+      return JSON.parse(sanitized) as unknown;
+    } catch {
+      throw initialError;
+    }
+  }
+}
+
 function normalizeIdea(value: unknown): GeneratedIdea {
   const idea = value as Record<string, unknown>;
   const scores = (idea.scores ?? {}) as Record<string, unknown>;
@@ -90,7 +115,7 @@ function normalizeIdea(value: unknown): GeneratedIdea {
 }
 
 function parseIdeasFromResponse(text: string) {
-  const parsed = JSON.parse(extractJsonCandidate(text)) as unknown;
+  const parsed = parseJsonResponse(text);
 
   if (Array.isArray(parsed)) {
     return parsed.map(normalizeIdea);
@@ -109,7 +134,7 @@ function parseIdeasFromResponse(text: string) {
 }
 
 function parseIdeaFromResponse(text: string) {
-  const parsed = JSON.parse(extractJsonCandidate(text)) as unknown;
+  const parsed = parseJsonResponse(text);
 
   if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
     return normalizeIdea(parsed);
@@ -138,8 +163,16 @@ async function runAgent(
       ],
       temperature:
         input.depth === "free" ? 0.8 : input.depth === "draft" ? 0.9 : 0.7,
-      maxOutputTokens: agentName === "finalEditor" ? 3200 : 1800,
-      requireJsonResponse: agentName === "finalEditor",
+      maxOutputTokens:
+        agentName === "finalEditor"
+          ? input.depth === "free"
+            ? 1800
+            : 3200
+          : input.depth === "free"
+            ? 900
+            : 1800,
+      requireJsonResponse:
+        agentName === "finalEditor" && input.depth !== "free",
     });
 
     const estimatedCostUsd =
@@ -227,7 +260,7 @@ export async function generateIdeas(
 async function runSingleIdeaOperation(
   operationType: AiOperationType,
   prompt: string,
-  input: RefineIdeaInput | GenerateMvpConceptInput,
+  input: RefineIdeaInput | GenerateMvpConceptInput | RealityCheckInput,
 ) {
   const modelConfig = AI_MODELS[input.depth];
 
@@ -239,8 +272,8 @@ async function runSingleIdeaOperation(
         { role: "user", content: prompt },
       ],
       temperature: input.depth === "free" ? 0.8 : 0.7,
-      maxOutputTokens: 2800,
-      requireJsonResponse: true,
+      maxOutputTokens: input.depth === "free" ? 1400 : 2800,
+      requireJsonResponse: input.depth !== "free",
     });
 
     const idea = parseIdeaFromResponse(response.text);

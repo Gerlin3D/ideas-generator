@@ -92,7 +92,7 @@ export function GenerateIdeasForm() {
           <select
             id="depth"
             name="depth"
-            defaultValue="smart"
+            defaultValue="free"
             className="rounded-2xl border border-border bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-sky-400/50"
           >
             {AI_DEPTHS.map((option) => (

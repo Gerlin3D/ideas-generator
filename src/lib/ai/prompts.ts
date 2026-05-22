@@ -307,6 +307,9 @@ Rules:
 - prefer ideas the workspace owner can validate quickly
 - include criticism and execution risk in the final scoring
 - return JSON only
+- use double-quoted JSON property names only
+- do not use markdown fences
+- do not add comments or trailing commas
 
 Return this exact top-level shape:
 {

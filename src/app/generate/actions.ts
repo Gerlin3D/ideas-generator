@@ -132,7 +132,10 @@ export async function generateIdeasAction(
   } catch (error) {
     console.error("generateIdeasAction failed", error);
     return {
-      error: "Unable to generate ideas right now. Check the server log and try again.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to generate ideas right now. Check the server log and try again.",
     };
   }
 

@@ -189,7 +189,10 @@ export async function refineIdeaAction(
   } catch (error) {
     console.error("refineIdeaAction failed", error);
     return {
-      error: "Unable to refine the idea right now. Check the server log and try again.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to refine the idea right now. Check the server log and try again.",
     };
   }
 
@@ -253,7 +256,10 @@ export async function generateMvpConceptAction(
   } catch (error) {
     console.error("generateMvpConceptAction failed", error);
     return {
-      error: "Unable to generate the MVP concept right now. Check the server log and try again.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to generate the MVP concept right now. Check the server log and try again.",
     };
   }
 
@@ -317,7 +323,10 @@ export async function realityCheckAction(
   } catch (error) {
     console.error("realityCheckAction failed", error);
     return {
-      error: "Unable to run reality check right now. Check the server log and try again.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to run reality check right now. Check the server log and try again.",
     };
   }
 

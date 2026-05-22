@@ -12,11 +12,25 @@ type OpenRouterApiResponse = {
     total_tokens?: number;
   };
   choices?: Array<{
+    finish_reason?: string | null;
     message?: {
       content?: string | Array<{ type?: string; text?: string }>;
+      reasoning?: string;
     };
   }>;
 };
+
+class OpenRouterHttpError extends Error {
+  status: number;
+  responseText: string;
+
+  constructor(status: number, responseText: string) {
+    super(`OpenRouter request failed: ${status} ${responseText}`);
+    this.name = "OpenRouterHttpError";
+    this.status = status;
+    this.responseText = responseText;
+  }
+}
 
 function getOpenRouterApiKey() {
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -30,6 +44,7 @@ function getOpenRouterApiKey() {
 
 function extractTextContent(
   content: string | Array<{ type?: string; text?: string }> | undefined,
+  reasoning?: string,
 ) {
   if (typeof content === "string") {
     return content;
@@ -42,12 +57,10 @@ function extractTextContent(
       .trim();
   }
 
-  return "";
+  return reasoning?.trim() ?? "";
 }
 
-export async function runOpenRouterTextGeneration(
-  input: RunTextGenerationInput,
-): Promise<ProviderTextResponse> {
+function buildRequestBody(input: RunTextGenerationInput) {
   const requestBody: Record<string, unknown> = {
     model: input.modelConfig.model,
     messages: input.messages,
@@ -61,6 +74,64 @@ export async function runOpenRouterTextGeneration(
     };
   }
 
+  return requestBody;
+}
+
+function normalizeErrorText(errorText: string) {
+  const trimmed = errorText.trim();
+
+  if (!trimmed) {
+    return "Empty error response from OpenRouter.";
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed) as
+      | {
+          error?: { message?: string };
+          message?: string;
+          detail?: string;
+        }
+      | undefined;
+
+    const message =
+      parsed?.error?.message ?? parsed?.message ?? parsed?.detail ?? trimmed;
+
+    return message.replace(/\s+/g, " ").trim();
+  } catch {
+    return trimmed.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  }
+}
+
+function shouldRetryWithCompatibilityMode(
+  input: RunTextGenerationInput,
+  error: OpenRouterHttpError,
+) {
+  return (
+    input.modelConfig.model === "openrouter/free" ||
+    input.requireJsonResponse ||
+    error.status === 429 ||
+    error.status >= 500
+  );
+}
+
+function buildCompatibilityInput(input: RunTextGenerationInput) {
+  const isFreeModel = input.modelConfig.model === "openrouter/free";
+
+  return {
+    ...input,
+    requireJsonResponse: false,
+    temperature: Math.min(input.temperature ?? 0.7, isFreeModel ? 0.5 : 0.6),
+    maxOutputTokens: Math.min(
+      input.maxOutputTokens ?? 2200,
+      isFreeModel ? 1200 : 1800,
+    ),
+  } satisfies RunTextGenerationInput;
+}
+
+async function requestOpenRouter(
+  input: RunTextGenerationInput,
+  requestBody: Record<string, unknown>,
+) {
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -73,26 +144,83 @@ export async function runOpenRouterTextGeneration(
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`OpenRouter request failed: ${response.status} ${errorText}`);
+    const errorText = normalizeErrorText(await response.text());
+    throw new OpenRouterHttpError(response.status, errorText);
   }
 
   const data = (await response.json()) as OpenRouterApiResponse;
-  const text = extractTextContent(data.choices?.[0]?.message?.content);
+  const choice = data.choices?.[0];
+  const text = extractTextContent(
+    choice?.message?.content,
+    choice?.message?.reasoning,
+  );
 
-  if (!text) {
-    throw new Error("OpenRouter returned an empty response.");
+  return {
+    data,
+    text,
+    finishReason: choice?.finish_reason ?? null,
+    model: data.model ?? input.modelConfig.model,
+  };
+}
+
+export async function runOpenRouterTextGeneration(
+  input: RunTextGenerationInput,
+): Promise<ProviderTextResponse> {
+  let activeInput = input;
+  let primaryResult;
+
+  try {
+    const primaryBody = buildRequestBody(activeInput);
+    primaryResult = await requestOpenRouter(activeInput, primaryBody);
+  } catch (error) {
+    if (
+      error instanceof OpenRouterHttpError &&
+      shouldRetryWithCompatibilityMode(activeInput, error)
+    ) {
+      activeInput = buildCompatibilityInput(activeInput);
+      const compatibilityBody = buildRequestBody(activeInput);
+      primaryResult = await requestOpenRouter(activeInput, compatibilityBody);
+    } else {
+      throw error;
+    }
+  }
+
+  if (!primaryResult.text) {
+    const fallbackInput = buildCompatibilityInput(activeInput);
+    const fallbackBody = buildRequestBody(fallbackInput);
+
+    const fallbackResult = await requestOpenRouter(fallbackInput, fallbackBody);
+
+    if (!fallbackResult.text) {
+      throw new Error(
+        `OpenRouter returned an empty response. finish_reason=${String(
+          fallbackResult.finishReason ?? primaryResult.finishReason ?? "unknown",
+        )}`,
+      );
+    }
+
+    return {
+      provider: "openrouter",
+      model: fallbackResult.model,
+      text: fallbackResult.text,
+      usage: {
+        promptTokens: fallbackResult.data.usage?.prompt_tokens,
+        completionTokens: fallbackResult.data.usage?.completion_tokens,
+        totalTokens: fallbackResult.data.usage?.total_tokens,
+        providerRequestId: fallbackResult.data.id ?? null,
+      },
+    };
   }
 
   return {
     provider: "openrouter",
-    model: data.model ?? input.modelConfig.model,
-    text,
+    model: primaryResult.model,
+    text: primaryResult.text,
     usage: {
-      promptTokens: data.usage?.prompt_tokens,
-      completionTokens: data.usage?.completion_tokens,
-      totalTokens: data.usage?.total_tokens,
-      providerRequestId: data.id ?? null,
+      promptTokens: primaryResult.data.usage?.prompt_tokens,
+      completionTokens: primaryResult.data.usage?.completion_tokens,
+      totalTokens: primaryResult.data.usage?.total_tokens,
+      providerRequestId: primaryResult.data.id ?? null,
     },
   };
 }
