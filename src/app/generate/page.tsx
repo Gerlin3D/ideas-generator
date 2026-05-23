@@ -14,7 +14,7 @@ export default async function GeneratePage() {
       <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
         <section className="rounded-[24px] border border-border bg-card/80 p-6 shadow-panel backdrop-blur">
           <p className="text-xs uppercase tracking-[0.24em] text-sky-200/80">
-            /generate
+            generate
           </p>
           <h2 className="mt-3 text-2xl font-semibold text-white">
             Run structured idea generation

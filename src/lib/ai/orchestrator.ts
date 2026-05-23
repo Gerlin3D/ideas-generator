@@ -39,17 +39,56 @@ function extractJsonCandidate(text: string) {
   }
 
   const objectStart = trimmed.indexOf("{");
-  const objectEnd = trimmed.lastIndexOf("}");
-
-  if (objectStart !== -1 && objectEnd !== -1 && objectEnd > objectStart) {
-    return trimmed.slice(objectStart, objectEnd + 1);
-  }
-
   const arrayStart = trimmed.indexOf("[");
-  const arrayEnd = trimmed.lastIndexOf("]");
+  const starts = [objectStart, arrayStart].filter((index) => index !== -1);
 
-  if (arrayStart !== -1 && arrayEnd !== -1 && arrayEnd > arrayStart) {
-    return trimmed.slice(arrayStart, arrayEnd + 1);
+  if (starts.length > 0) {
+    const start = Math.min(...starts);
+    const opening = trimmed[start];
+    const closing = opening === "{" ? "}" : "]";
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+
+    for (let index = start; index < trimmed.length; index += 1) {
+      const character = trimmed[index];
+
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+          continue;
+        }
+
+        if (character === "\\") {
+          escaped = true;
+          continue;
+        }
+
+        if (character === '"') {
+          inString = false;
+        }
+
+        continue;
+      }
+
+      if (character === '"') {
+        inString = true;
+        continue;
+      }
+
+      if (character === opening) {
+        depth += 1;
+        continue;
+      }
+
+      if (character === closing) {
+        depth -= 1;
+
+        if (depth === 0) {
+          return trimmed.slice(start, index + 1);
+        }
+      }
+    }
   }
 
   return trimmed;
@@ -151,26 +190,41 @@ async function repairJsonWithAi(
   text: string,
   modelConfig: (typeof AI_MODELS)[keyof typeof AI_MODELS],
   expectedTopLevel: "ideas" | "idea",
+  attempt: number,
 ) {
+  const expectedShape =
+    expectedTopLevel === "ideas"
+      ? '{ "ideas": [ { "title": "string", "shortDescription": "string", "fullDescription": "string", "category": "string", "targetAudience": "string", "problem": "string", "solution": "string", "monetization": ["string"], "mvpFeatures": ["string"], "risks": ["string"], "firstSteps": ["string"], "scores": { "overall": 1, "market": 1, "feasibility": 1, "monetization": 1, "personalFit": 1 } } ] }'
+      : '{ "title": "string", "shortDescription": "string", "fullDescription": "string", "category": "string", "targetAudience": "string", "problem": "string", "solution": "string", "monetization": ["string"], "mvpFeatures": ["string"], "risks": ["string"], "firstSteps": ["string"], "scores": { "overall": 1, "market": 1, "feasibility": 1, "monetization": 1, "personalFit": 1 } }';
+
   const response = await runOpenRouterTextGeneration({
     modelConfig,
     messages: [
       {
         role: "system",
         content:
-          "You repair malformed JSON. Return only valid JSON with no markdown, no comments, and no explanation.",
+          "You convert malformed or plain-text model output into valid JSON. Return only valid JSON with no markdown, no comments, and no explanation.",
       },
       {
         role: "user",
-        content: `Repair this malformed JSON so it becomes valid JSON without changing the meaning.
+        content: `Turn the following content into valid JSON without changing its meaning.
 
-Expected top-level shape: ${
-          expectedTopLevel === "ideas"
-            ? '{ "ideas": [ { "title": "string", "shortDescription": "string", "fullDescription": "string", "category": "string", "targetAudience": "string", "problem": "string", "solution": "string", "monetization": ["string"], "mvpFeatures": ["string"], "risks": ["string"], "firstSteps": ["string"], "scores": { "overall": 1, "market": 1, "feasibility": 1, "monetization": 1, "personalFit": 1 } } ] }'
-            : '{ "title": "string", "shortDescription": "string", "fullDescription": "string", "category": "string", "targetAudience": "string", "problem": "string", "solution": "string", "monetization": ["string"], "mvpFeatures": ["string"], "risks": ["string"], "firstSteps": ["string"], "scores": { "overall": 1, "market": 1, "feasibility": 1, "monetization": 1, "personalFit": 1 } }'
-        }
+Expected top-level shape:
+${expectedShape}
 
-Malformed JSON:
+Rules:
+- return only JSON
+- use double-quoted property names
+- if the content is plain text instead of JSON, convert it into the expected JSON shape
+- preserve as much useful meaning as possible
+- fill missing string fields with concise summaries, not empty arrays or nulls unless truly unknown
+- keep array fields as arrays of strings
+- keep scores numeric
+- do not include markdown fences
+- do not include explanations
+- this is repair attempt ${attempt}
+
+Source content:
 ${extractJsonCandidate(text)}`,
       },
     ],
@@ -189,8 +243,28 @@ async function parseIdeasWithRepair(
   try {
     return parseIdeasFromResponse(text);
   } catch {
-    const repairedText = await repairJsonWithAi(text, modelConfig, "ideas");
-    return parseIdeasFromResponse(repairedText);
+    let repairSource = text;
+
+    for (const attempt of [1, 2]) {
+      const repairedText = await repairJsonWithAi(
+        repairSource,
+        modelConfig,
+        "ideas",
+        attempt,
+      );
+
+      try {
+        return parseIdeasFromResponse(repairedText);
+      } catch (error) {
+        repairSource = repairedText;
+
+        if (attempt === 2) {
+          throw error;
+        }
+      }
+    }
+
+    throw new Error("AI response could not be repaired into a valid ideas payload.");
   }
 }
 
@@ -201,8 +275,28 @@ async function parseIdeaWithRepair(
   try {
     return parseIdeaFromResponse(text);
   } catch {
-    const repairedText = await repairJsonWithAi(text, modelConfig, "idea");
-    return parseIdeaFromResponse(repairedText);
+    let repairSource = text;
+
+    for (const attempt of [1, 2]) {
+      const repairedText = await repairJsonWithAi(
+        repairSource,
+        modelConfig,
+        "idea",
+        attempt,
+      );
+
+      try {
+        return parseIdeaFromResponse(repairedText);
+      } catch (error) {
+        repairSource = repairedText;
+
+        if (attempt === 2) {
+          throw error;
+        }
+      }
+    }
+
+    throw new Error("AI response could not be repaired into a valid idea payload.");
   }
 }
 

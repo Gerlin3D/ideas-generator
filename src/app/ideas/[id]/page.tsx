@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/app-shell";
+import { BackFab } from "@/components/back-fab";
 import { IdeaStatusBadge } from "@/components/idea-status-badge";
 import { IdeaVersionBadge } from "@/components/idea-version-badge";
 import { IdeaActions } from "@/app/ideas/[id]/idea-actions";
@@ -119,7 +120,7 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
       title={currentVersion?.title ?? idea.title}
       description="Idea detail preserves the current working version and the complete version history, so later refinement can add depth without overwriting the original."
     >
-      <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
+      <div className="grid gap-6 pb-24 xl:grid-cols-[1.25fr_0.75fr]">
         <div className="grid gap-6">
           <section className="rounded-[24px] border border-border bg-card/80 p-6 shadow-panel backdrop-blur">
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -318,6 +319,7 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
           <IdeaActions ideaId={idea.id} />
         </div>
       </div>
+      <BackFab fallbackHref="/ideas" />
     </AppShell>
   );
 }

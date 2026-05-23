@@ -88,29 +88,25 @@ export default async function IdeasPage() {
                 href={`/ideas/${idea.id}`}
                 className="rounded-[24px] border border-border bg-card/80 p-6 shadow-panel backdrop-blur transition hover:border-sky-400/30"
               >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="space-y-3">
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <IdeaStatusBadge status={idea.status} />
                       {currentVersion ? (
                         <IdeaVersionBadge type={currentVersion.type} />
                       ) : null}
                     </div>
-                    <div>
-                      <h2 className="text-xl font-semibold text-white">
-                        {currentVersion?.title ?? idea.title}
-                      </h2>
-                      <p className="mt-2 text-sm leading-6 text-slate-300">
-                        {currentVersion?.shortDescription ?? idea.shortDescription}
-                      </p>
-                    </div>
+                    <p className="text-right text-xs text-slate-400">
+                      {formatDate(idea.createdAt)}
+                    </p>
                   </div>
 
-                  <div className="text-right text-xs text-slate-400">
-                    <p>{formatDate(idea.createdAt)}</p>
-                    <p className="mt-1">
-                      {idea.versions.length} version
-                      {idea.versions.length === 1 ? "" : "s"}
+                  <div>
+                    <h2 className="text-xl font-semibold text-white">
+                      {currentVersion?.title ?? idea.title}
+                    </h2>
+                    <p className="mt-2 text-sm leading-6 text-slate-300">
+                      {currentVersion?.shortDescription ?? idea.shortDescription}
                     </p>
                   </div>
                 </div>
@@ -120,7 +116,10 @@ export default async function IdeasPage() {
                     Category: {currentVersion?.category ?? idea.category ?? "Unspecified"}
                   </span>
                   <span className="rounded-full border border-slate-800/80 bg-slate-950/60 px-3 py-1">
-                    Version: {currentVersion ? currentVersion.versionNumber : "N/A"}
+                    Version:{" "}
+                    {currentVersion
+                      ? `${currentVersion.versionNumber}/${idea.versions.length}`
+                      : `N/A/${idea.versions.length}`}
                   </span>
                   <span className="rounded-full border border-slate-800/80 bg-slate-950/60 px-3 py-1">
                     Overall score:{" "}

@@ -19,10 +19,10 @@ const config: Config = {
       },
       backgroundImage: {
         "lab-grid":
-          "radial-gradient(circle at top, rgba(56, 189, 248, 0.14), transparent 30%), linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px)",
+          "radial-gradient(circle at top, rgba(56, 189, 248, 0.14), transparent 50%), radial-gradient(circle at bottom left, rgba(218, 112, 214, 0.1), transparent 50%), linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px)",
       },
       backgroundSize: {
-        "lab-grid": "auto, 40px 40px, 40px 40px",
+        "lab-grid": "auto, auto, 40px 40px, 40px 40px",
       },
       boxShadow: {
         panel: "0 24px 60px rgba(2, 6, 23, 0.45)",
