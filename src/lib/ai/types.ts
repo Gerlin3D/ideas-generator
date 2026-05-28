@@ -109,6 +109,7 @@ export const AGENT_NAMES = [
 ] as const;
 
 export type AgentName = (typeof AGENT_NAMES)[number];
+export type AgentOutputMap = Record<AgentName, string>;
 
 export const AI_MODELS: Record<AiDepth, AiModelConfig> = {
   free: {
@@ -184,6 +185,7 @@ export type AiLogInput = {
 
 export type GenerateIdeasResult = {
   ideas: GeneratedIdea[];
+  agentOutputs: AgentOutputMap;
   usage: ProviderUsage;
   provider: string;
   model: string;

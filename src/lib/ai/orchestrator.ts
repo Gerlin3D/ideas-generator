@@ -403,6 +403,13 @@ export async function generateIdeas(
 
   return {
     ideas,
+    agentOutputs: {
+      dreamer: dreamer.text,
+      builder: builder.text,
+      investor: investor.text,
+      critic: critic.text,
+      finalEditor: finalEditor.text,
+    },
     usage,
     provider: finalEditor.provider,
     model: finalEditor.model,

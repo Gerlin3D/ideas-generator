@@ -108,7 +108,14 @@ export async function generateIdeasAction(
             feasibilityScore: generatedIdea.scores.feasibility,
             monetizationScore: generatedIdea.scores.monetization,
             personalFitScore: generatedIdea.scores.personalFit,
-            rawAiResponse: generatedIdea,
+            rawAiResponse: {
+              generatedIdea,
+              agentOutputs: result.agentOutputs,
+              generationMeta: {
+                provider: result.provider,
+                model: result.model,
+              },
+            },
           },
           select: {
             id: true,

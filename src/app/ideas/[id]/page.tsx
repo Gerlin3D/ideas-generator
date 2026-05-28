@@ -1,9 +1,15 @@
 import { AppShell } from "@/components/app-shell";
+import { AgentAvatar } from "@/components/agent-avatar";
 import { BackFab } from "@/components/back-fab";
 import { IdeaStatusBadge } from "@/components/idea-status-badge";
 import { IdeaVersionBadge } from "@/components/idea-version-badge";
 import { IdeaActions } from "@/app/ideas/[id]/idea-actions";
-import { formatDate, formatEnumLabel, getCurrentIdeaVersion } from "@/lib/ideas";
+import {
+  formatDate,
+  formatEnumLabel,
+  getCurrentIdeaVersion,
+  getStructuredAgentOutputsFromRawAiResponse,
+} from "@/lib/ideas";
 import { requireWorkspaceSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { getIdeaUsageStats } from "@/lib/usage-stats";
@@ -52,6 +58,7 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
           feasibilityScore: true,
           monetizationScore: true,
           personalFitScore: true,
+          rawAiResponse: true,
           createdAt: true,
         },
       },
@@ -77,6 +84,7 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
           feasibilityScore: true,
           monetizationScore: true,
           personalFitScore: true,
+          rawAiResponse: true,
           createdAt: true,
         },
       },
@@ -89,6 +97,9 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
 
   const ideaUsage = await getIdeaUsageStats(workspaceId, idea.id);
   const currentVersion = getCurrentIdeaVersion(idea);
+  const agentOutputs = getStructuredAgentOutputsFromRawAiResponse(
+    currentVersion?.rawAiResponse,
+  );
 
   function DetailList({
     title,
@@ -207,6 +218,107 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
             <DetailList title="Risks" items={currentVersion?.risks} />
             <DetailList title="First steps" items={currentVersion?.firstSteps} />
           </div>
+
+          {agentOutputs ? (
+            <section className="rounded-[24px] border border-border bg-card/80 p-6 shadow-panel backdrop-blur">
+              <h2 className="text-lg font-semibold text-white">Agent perspectives</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-400">
+                Internal notes from the generation pipeline that shaped this version.
+              </p>
+              <div className="mt-5 grid gap-4">
+                {agentOutputs.map((agent) => (
+                  <div
+                    key={agent.key}
+                    className="rounded-[20px] border border-slate-800/80 bg-slate-950/60 p-5"
+                  >
+                    <div className="flex items-center gap-4">
+                      <AgentAvatar agentKey={agent.key} />
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.2em] text-sky-200/80">
+                          {agent.label}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Perspective captured during orchestration
+                        </p>
+                      </div>
+                    </div>
+                    <p className="mt-4 text-sm leading-7 text-slate-300">
+                      {agent.summary}
+                    </p>
+
+                    {agent.mode === "analysis" && agent.strengths.length > 0 ? (
+                      <div className="mt-4">
+                        <p className="text-xs uppercase tracking-[0.2em] text-emerald-200/80">
+                          Strengths
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {agent.strengths.map((item) => (
+                            <span
+                              key={item}
+                              className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100"
+                            >
+                              {item}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {agent.mode === "analysis" && agent.weaknesses.length > 0 ? (
+                      <div className="mt-4">
+                        <p className="text-xs uppercase tracking-[0.2em] text-amber-200/80">
+                          Weak points
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {agent.weaknesses.map((item) => (
+                            <span
+                              key={item}
+                              className="rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1 text-xs text-amber-100"
+                            >
+                              {item}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {agent.ideas.length > 0 ? (
+                      <div className="mt-4 grid gap-3">
+                        {agent.ideas.map((idea, index) => (
+                          <div
+                            key={`${agent.key}-${idea.title}-${index}`}
+                            className="rounded-2xl border border-slate-800/80 bg-slate-900/70 p-4"
+                          >
+                            <p className="text-sm font-medium text-white">{idea.title}</p>
+                            {idea.angle ? (
+                              <p className="mt-2 text-sm leading-6 text-slate-300">
+                                {idea.angle}
+                              </p>
+                            ) : null}
+                            {"notes" in idea && idea.notes.length > 0 ? (
+                              <ul className="mt-3 grid gap-2 text-sm leading-6 text-slate-400">
+                                {idea.notes.map((note) => (
+                                  <li key={note} className="rounded-xl bg-slate-950/70 px-3 py-2">
+                                    {note}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    {agent.mode === "raw" ? (
+                      <pre className="mt-4 overflow-x-auto whitespace-pre-wrap rounded-2xl border border-slate-800/80 bg-slate-900/70 p-4 text-xs leading-6 text-slate-400">
+                        {agent.text}
+                      </pre>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
         </div>
 
         <div className="grid gap-6">
