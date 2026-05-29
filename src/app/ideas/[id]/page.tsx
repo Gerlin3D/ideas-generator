@@ -1,8 +1,9 @@
 import { AppShell } from "@/components/app-shell";
 import { AgentAvatar } from "@/components/agent-avatar";
-import { BackFab } from "@/components/back-fab";
+import { DeleteIdeaButton } from "@/components/delete-idea-button";
 import { IdeaStatusBadge } from "@/components/idea-status-badge";
 import { IdeaVersionBadge } from "@/components/idea-version-badge";
+import { ScrollTopFab } from "@/components/scroll-top-fab";
 import { IdeaActions } from "@/app/ideas/[id]/idea-actions";
 import {
   formatDate,
@@ -130,6 +131,13 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
     <AppShell
       title={currentVersion?.title ?? idea.title}
       description="Idea detail preserves the current working version and the complete version history, so later refinement can add depth without overwriting the original."
+      headerActions={
+        <DeleteIdeaButton
+          ideaId={idea.id}
+          className="rounded-2xl"
+          label="Delete idea"
+        />
+      }
     >
       <div className="grid gap-6 pb-24 xl:grid-cols-[1.25fr_0.75fr]">
         <div className="grid gap-6">
@@ -310,7 +318,7 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
                     ) : null}
 
                     {agent.mode === "raw" ? (
-                      <pre className="mt-4 overflow-x-auto whitespace-pre-wrap rounded-2xl border border-slate-800/80 bg-slate-900/70 p-4 text-xs leading-6 text-slate-400">
+                      <pre className="lab-scrollbar mt-4 overflow-x-auto whitespace-pre-wrap rounded-2xl border border-slate-800/80 bg-slate-900/70 p-4 text-xs leading-6 text-slate-400">
                         {agent.text}
                       </pre>
                     ) : null}
@@ -431,7 +439,7 @@ export default async function IdeaDetailPage({ params }: IdeaDetailPageProps) {
           <IdeaActions ideaId={idea.id} />
         </div>
       </div>
-      <BackFab fallbackHref="/ideas" />
+      <ScrollTopFab />
     </AppShell>
   );
 }

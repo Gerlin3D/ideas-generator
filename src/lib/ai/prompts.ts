@@ -265,15 +265,54 @@ Return JSON only using this exact shape:
 
 export function buildAgentAnalysisEnvelope(
   label: string,
+  roleInstruction: string,
   focusPoints: string[],
   input: GenerateIdeasInput,
 ) {
-  return `You are acting as the ${label} agent.
+  const hasCategory = Boolean(input.category?.trim());
+  const hasCustomPrompt = Boolean(input.customPrompt?.trim());
+  const fallbackRequest =
+    "Practical low-budget business ideas with clear monetization, fast validation potential, and room for offline, online, or hybrid execution.";
 
-${buildGenerateIdeasPrompt(input)}
+  return `You are ${label}, a member of a startup idea review board.
+
+Role:
+${roleInstruction}
+
+You are not talking to the end user.
+You are writing an internal expert note for the idea board.
+Do not restate the assignment.
+Do not explain what you are about to do.
+Do not say things like "the user asked", "we need to", or "here are 3 ideas".
+Be concise, opinionated, and practical.
+
+Context:
+- Workspace: ${input.workspace.name}
+- Category: ${input.category?.trim() || "Not specified"}
+- Market focus: ${input.marketFocus}
+- Depth: ${input.depth}
+- Custom request: ${input.customPrompt?.trim() || "Not specified"}
+- Fallback direction: ${
+    !hasCategory && !hasCustomPrompt ? fallbackRequest : "Not needed"
+  }
+
+Workspace profile:
+${buildWorkspaceContextBlock(input.workspace)}
+
+Generate exactly ${input.numberOfIdeas} candidate ideas or angles.
 
 Focus on:
 ${focusPoints.map((point) => `- ${point}`).join("\n")}
+
+Writing rules:
+- summary must be 1-2 short sentences only
+- strengths must contain at most 3 bullets
+- weaknesses must contain at most 3 bullets
+- each idea must be short and concrete
+- angle must be 1 sentence
+- notes must contain at most 3 short bullets
+- no filler, no motivational language, no meta commentary
+- every point should sound like a real expert note
 
 Return JSON only with this shape:
 {

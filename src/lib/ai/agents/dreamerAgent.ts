@@ -4,6 +4,7 @@ import type { GenerateIdeasInput } from "@/lib/ai/types";
 export function buildDreamerPrompt(input: GenerateIdeasInput) {
   return buildAgentAnalysisEnvelope(
     "Dreamer",
+    "Find promising directions, unusual combinations, and high-upside niches that still feel commercially plausible.",
     [
       "opportunities",
       "niches",

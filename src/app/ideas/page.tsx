@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { DeleteIdeaButton } from "@/components/delete-idea-button";
 import { IdeaStatusBadge } from "@/components/idea-status-badge";
 import { IdeaVersionBadge } from "@/components/idea-version-badge";
 import { requireWorkspaceSession } from "@/lib/auth/session";
@@ -83,53 +84,61 @@ export default async function IdeasPage() {
             const currentVersion = getCurrentIdeaVersion(idea);
 
             return (
-              <Link
+              <section
                 key={idea.id}
-                href={`/ideas/${idea.id}`}
                 className="rounded-[24px] border border-border bg-card/80 p-6 shadow-panel backdrop-blur transition hover:border-sky-400/30"
               >
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <IdeaStatusBadge status={idea.status} />
-                      {currentVersion ? (
-                        <IdeaVersionBadge type={currentVersion.type} />
-                      ) : null}
+                <Link href={`/ideas/${idea.id}`} className="block">
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <IdeaStatusBadge status={idea.status} />
+                        {currentVersion ? (
+                          <IdeaVersionBadge type={currentVersion.type} />
+                        ) : null}
+                      </div>
+                      <p className="text-right text-xs text-slate-400">
+                        {formatDate(idea.createdAt)}
+                      </p>
                     </div>
-                    <p className="text-right text-xs text-slate-400">
-                      {formatDate(idea.createdAt)}
-                    </p>
-                  </div>
 
-                  <div>
-                    <h2 className="text-xl font-semibold text-white">
-                      {currentVersion?.title ?? idea.title}
-                    </h2>
-                    <p className="mt-2 text-sm leading-6 text-slate-300">
-                      {currentVersion?.shortDescription ?? idea.shortDescription}
-                    </p>
+                    <div>
+                      <h2 className="text-xl font-semibold text-white">
+                        {currentVersion?.title ?? idea.title}
+                      </h2>
+                      <p className="mt-2 text-sm leading-6 text-slate-300">
+                        {currentVersion?.shortDescription ?? idea.shortDescription}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                </Link>
 
-                <div className="mt-5 flex flex-wrap gap-3 text-sm text-slate-300">
-                  <span className="rounded-full border border-slate-800/80 bg-slate-950/60 px-3 py-1">
-                    Category: {currentVersion?.category ?? idea.category ?? "Unspecified"}
-                  </span>
-                  <span className="rounded-full border border-slate-800/80 bg-slate-950/60 px-3 py-1">
-                    Version:{" "}
-                    {currentVersion
-                      ? `${currentVersion.versionNumber}/${idea.versions.length}`
-                      : `N/A/${idea.versions.length}`}
-                  </span>
-                  <span className="rounded-full border border-slate-800/80 bg-slate-950/60 px-3 py-1">
-                    Overall score:{" "}
-                    {currentVersion?.overallScore !== null &&
-                    currentVersion?.overallScore !== undefined
-                      ? currentVersion.overallScore
-                      : "Pending"}
-                  </span>
+                <div className="mt-5 flex items-end justify-between gap-4">
+                  <div className="flex flex-wrap gap-3 text-sm text-slate-300">
+                    <span className="rounded-full border border-slate-800/80 bg-slate-950/60 px-3 py-1">
+                      Category: {currentVersion?.category ?? idea.category ?? "Unspecified"}
+                    </span>
+                    <span className="rounded-full border border-slate-800/80 bg-slate-950/60 px-3 py-1">
+                      Version:{" "}
+                      {currentVersion
+                        ? `${currentVersion.versionNumber}/${idea.versions.length}`
+                        : `N/A/${idea.versions.length}`}
+                    </span>
+                    <span className="rounded-full border border-slate-800/80 bg-slate-950/60 px-3 py-1">
+                      Overall score:{" "}
+                      {currentVersion?.overallScore !== null &&
+                      currentVersion?.overallScore !== undefined
+                        ? currentVersion.overallScore
+                        : "Pending"}
+                    </span>
+                  </div>
+                  <DeleteIdeaButton
+                    ideaId={idea.id}
+                    className="flex-shrink-0"
+                    label="Delete"
+                  />
                 </div>
-              </Link>
+              </section>
             );
           })}
         </div>

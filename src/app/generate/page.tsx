@@ -11,7 +11,7 @@ export default async function GeneratePage() {
       title="Generate Ideas"
       description="Generate workspace-specific business ideas using the AI layer, then store every result with version history and usage tracking."
     >
-      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+      <div className="grid gap-6 xl:grid-cols-[1.5fr_0.5fr]">
         <section className="rounded-[24px] border border-border bg-card/80 p-6 shadow-panel backdrop-blur">
           <p className="text-xs uppercase tracking-[0.24em] text-sky-200/80">
             generate

@@ -1,4 +1,5 @@
 import { logoutAction } from "@/app/actions";
+import { ScrollArea } from "@/components/scroll-area";
 import { getCurrentWorkspaceId } from "@/lib/auth/session";
 import { cn } from "@/lib/utils";
 import { SidebarNav } from "@/components/sidebar-links";
@@ -7,6 +8,7 @@ type AppShellProps = {
   title: string;
   description: string;
   children?: React.ReactNode;
+  headerActions?: React.ReactNode;
 };
 
 const publicNavigation = [
@@ -22,13 +24,18 @@ const privateNavigation = [
   { href: "/usage", label: "Usage" },
 ];
 
-export async function AppShell({ title, description, children }: AppShellProps) {
+export async function AppShell({
+  title,
+  description,
+  children,
+  headerActions,
+}: AppShellProps) {
   const workspaceId = await getCurrentWorkspaceId();
   const navigation = workspaceId ? privateNavigation : publicNavigation;
 
   return (
     <div className="min-h-screen bg-background bg-lab-grid text-foreground">
-      <div className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col px-4 py-4 sm:px-6 lg:h-screen lg:max-h-screen lg:flex-row lg:gap-6 lg:overflow-hidden lg:px-8 lg:py-6">
+      <div className="mx-auto flex min-h-screen w-full flex-col px-4 py-4 sm:px-6 lg:h-screen lg:max-h-screen lg:flex-row lg:gap-6 lg:overflow-hidden lg:px-8 lg:py-6">
         <aside className="mb-6 rounded-[28px] border border-border bg-card/70 p-5 shadow-panel backdrop-blur lg:mb-0 lg:flex lg:h-full lg:w-72 lg:flex-col lg:self-stretch">
           <div className="space-y-3">
             <span className="inline-flex w-fit rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 text-xs uppercase tracking-[0.24em] text-sky-200">
@@ -63,22 +70,31 @@ export async function AppShell({ title, description, children }: AppShellProps) 
 
         <div className="min-w-0 flex-1 lg:flex lg:h-full lg:flex-col lg:overflow-hidden">
           <header className="mb-6 rounded-[28px] border border-border bg-card/70 p-6 shadow-panel backdrop-blur lg:flex-shrink-0">
-            <div className="space-y-2">
-              <p className="text-xs uppercase tracking-[0.24em] text-sky-200/80">
-                Workspace View
-              </p>
-              <h2 className="text-3xl font-semibold tracking-tight text-white">
-                {title}
-              </h2>
-              <p className="max-w-3xl text-sm leading-6 text-slate-300">
-                {description}
-              </p>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-[0.24em] text-sky-200/80">
+                  Workspace View
+                </p>
+                <h2 className="text-3xl font-semibold tracking-tight text-white">
+                  {title}
+                </h2>
+                <p className="max-w-3xl text-sm leading-6 text-slate-300">
+                  {description}
+                </p>
+              </div>
+
+              {headerActions ? (
+                <div className="flex shrink-0 self-end">{headerActions}</div>
+              ) : null}
             </div>
           </header>
 
-          <main className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-2">
+          <ScrollArea
+            containerId="app-main"
+            className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-2"
+          >
             {children}
-          </main>
+          </ScrollArea>
         </div>
       </div>
     </div>
