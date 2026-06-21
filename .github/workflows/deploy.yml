@@ -61,3 +61,18 @@ jobs:
             docker compose pull
             docker compose up -d
             docker image prune -f
+
+      - name: Smoke test
+        run: |
+          for i in {1..10}; do
+            if curl -fsS https://ideas-gen.gerlin.site/api/health; then
+              exit 0
+            fi
+
+            echo "Health check failed, retrying in 5 seconds..."
+            sleep 5
+          done
+
+          echo "Health check failed after retries."
+          exit 1
+          
