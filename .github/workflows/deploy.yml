@@ -1,9 +1,13 @@
 name: Deploy
 
 on:
-  push:
+  workflow_run:
+    workflows:
+      - CI
     branches:
       - main
+    types:
+      - completed
 
 concurrency:
   group: production-deploy
@@ -19,6 +23,7 @@ env:
 
 jobs:
   deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     name: Build, push and deploy
     runs-on: ubuntu-latest
 
