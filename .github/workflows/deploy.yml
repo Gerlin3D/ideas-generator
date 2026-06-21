@@ -65,9 +65,12 @@ jobs:
       - name: Smoke test
         run: |
           for i in {1..10}; do
-            if curl -fsS https://ideas-gen.gerlin.site/api/health; then
+            echo "Smoke test attempt $i..."
+            response="$(curl -fsS https://ideas-gen.gerlin.site/api/health)" && {
+              echo "Health endpoint response:"
+              echo "$response"
               exit 0
-            fi
+            }
 
             echo "Health check failed, retrying in 5 seconds..."
             sleep 5
@@ -75,4 +78,3 @@ jobs:
 
           echo "Health check failed after retries."
           exit 1
-          
