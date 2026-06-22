@@ -2,7 +2,6 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/config";
-import { prisma } from "@/lib/prisma";
 
 const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 30;
 

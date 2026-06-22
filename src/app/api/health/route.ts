@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export function GET() {
+
+
+export async function GET() {
+  await prisma.$queryRaw`SELECT 1`;
+
   return NextResponse.json({
     status: "ok",
     service: "ideas-generator",
