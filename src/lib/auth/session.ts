@@ -123,19 +123,5 @@ export async function requireWorkspaceSession() {
     redirect("/login");
   }
 
-  const workspace = await prisma.workspace.findUnique({
-    where: {
-      id: workspaceId,
-    },
-    select: {
-      id: true,
-    },
-  });
-
-  if (!workspace) {
-    await clearWorkspaceSession();
-    redirect("/login");
-  }
-
   return workspaceId;
 }
