@@ -52,7 +52,7 @@ export function GenerateIdeasForm() {
             type="number"
             min={1}
             max={10}
-            defaultValue={3}
+            defaultValue={1}
             className="rounded-2xl border border-border bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-sky-400/50"
           />
         </div>

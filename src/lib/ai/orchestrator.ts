@@ -13,8 +13,10 @@ import {
 import { runOpenRouterTextGeneration } from "@/lib/ai/providers/openrouterProvider";
 import {
   AI_MODELS,
+  getAgentModelConfig,
   type AgentName,
   type AgentRunResult,
+  type AiModelConfig,
   type GenerateMvpConceptInput,
   type GenerateIdeasInput,
   type GenerateIdeasResult,
@@ -188,7 +190,7 @@ function parseIdeaFromResponse(text: string) {
 
 async function repairJsonWithAi(
   text: string,
-  modelConfig: (typeof AI_MODELS)[keyof typeof AI_MODELS],
+  modelConfig: AiModelConfig,
   expectedTopLevel: "ideas" | "idea",
   attempt: number,
 ) {
@@ -238,7 +240,7 @@ ${extractJsonCandidate(text)}`,
 
 async function parseIdeasWithRepair(
   text: string,
-  modelConfig: (typeof AI_MODELS)[keyof typeof AI_MODELS],
+  modelConfig: AiModelConfig,
 ) {
   try {
     return parseIdeasFromResponse(text);
@@ -270,7 +272,7 @@ async function parseIdeasWithRepair(
 
 async function parseIdeaWithRepair(
   text: string,
-  modelConfig: (typeof AI_MODELS)[keyof typeof AI_MODELS],
+  modelConfig: AiModelConfig,
 ) {
   try {
     return parseIdeaFromResponse(text);
@@ -305,7 +307,7 @@ async function runAgent(
   prompt: string,
   input: GenerateIdeasInput,
 ) {
-  const modelConfig = AI_MODELS[input.depth];
+  const modelConfig = getAgentModelConfig(input.depth, agentName);
 
   try {
     const response = await runOpenRouterTextGeneration({
@@ -379,9 +381,11 @@ export async function generateIdeas(
   input: GenerateIdeasInput,
 ): Promise<GenerateIdeasResult> {
   const dreamer = await runAgent("dreamer", buildDreamerPrompt(input), input);
-  const builder = await runAgent("builder", buildBuilderPrompt(input), input);
-  const investor = await runAgent("investor", buildInvestorPrompt(input), input);
-  const critic = await runAgent("critic", buildCriticPrompt(input), input);
+  const [builder, investor, critic] = await Promise.all([
+    runAgent("builder", buildBuilderPrompt(input, dreamer.text), input),
+    runAgent("investor", buildInvestorPrompt(input, dreamer.text), input),
+    runAgent("critic", buildCriticPrompt(input, dreamer.text), input),
+  ]);
 
   const finalEditor = await runAgent(
     "finalEditor",
@@ -394,7 +398,10 @@ export async function generateIdeas(
     input,
   );
 
-  const ideas = await parseIdeasWithRepair(finalEditor.text, AI_MODELS[input.depth]);
+  const ideas = await parseIdeasWithRepair(
+    finalEditor.text,
+    getAgentModelConfig(input.depth, "finalEditor"),
+  );
   const usage = combineUsage(
     ...[dreamer, builder, investor, critic, finalEditor].map(
       (result) => result.usage,
