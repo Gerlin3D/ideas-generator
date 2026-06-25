@@ -138,6 +138,44 @@ export const AI_MODELS: Record<AiDepth, AiModelConfig> = {
   },
 };
 
+export const AI_AGENT_MODELS: Record<
+  AiDepth,
+  Record<AgentName, AiModelConfig>
+> = {
+  free: {
+    dreamer: AI_MODELS.free,
+    builder: AI_MODELS.free,
+    investor: AI_MODELS.free,
+    critic: AI_MODELS.free,
+    finalEditor: AI_MODELS.free,
+  },
+  draft: {
+    dreamer: AI_MODELS.draft,
+    builder: AI_MODELS.draft,
+    investor: AI_MODELS.draft,
+    critic: AI_MODELS.smart,
+    finalEditor: AI_MODELS.smart,
+  },
+  smart: {
+    dreamer: AI_MODELS.draft,
+    builder: AI_MODELS.draft,
+    investor: AI_MODELS.smart,
+    critic: AI_MODELS.smart,
+    finalEditor: AI_MODELS.smart,
+  },
+  deep: {
+    dreamer: AI_MODELS.smart,
+    builder: AI_MODELS.smart,
+    investor: AI_MODELS.deep,
+    critic: AI_MODELS.deep,
+    finalEditor: AI_MODELS.deep,
+  },
+};
+
+export function getAgentModelConfig(depth: AiDepth, agentName: AgentName) {
+  return AI_AGENT_MODELS[depth][agentName];
+}
+
 export type ProviderMessage = {
   role: "system" | "user" | "assistant";
   content: string;
