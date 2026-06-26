@@ -7,13 +7,40 @@ import { requireWorkspaceSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { formatDate, getCurrentIdeaVersion } from "@/lib/ideas";
 
-export default async function IdeasPage() {
+const IDEAS_PAGE_SIZE = 12;
+
+type IdeasPageProps = {
+  searchParams?: Promise<{
+    page?: string | string[];
+  }>;
+};
+
+function parsePageParam(value: string | string[] | undefined) {
+  const rawValue = Array.isArray(value) ? value[0] : value;
+  const parsed = Number.parseInt(rawValue ?? "1", 10);
+
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function getIdeasPageHref(page: number) {
+  return page <= 1 ? "/ideas" : `/ideas?page=${page}`;
+}
+
+export default async function IdeasPage({ searchParams }: IdeasPageProps) {
   const workspaceId = await requireWorkspaceSession();
+  const resolvedSearchParams = await searchParams;
+  const requestedPage = parsePageParam(resolvedSearchParams?.page);
+  const where = {
+    workspaceId,
+  };
+  const totalIdeas = await prisma.idea.count({
+    where,
+  });
+  const totalPages = Math.max(1, Math.ceil(totalIdeas / IDEAS_PAGE_SIZE));
+  const currentPage = Math.min(requestedPage, totalPages);
 
   const ideas = await prisma.idea.findMany({
-    where: {
-      workspaceId,
-    },
+    where,
     select: {
       id: true,
       title: true,
@@ -51,6 +78,8 @@ export default async function IdeasPage() {
     orderBy: {
       createdAt: "desc",
     },
+    skip: (currentPage - 1) * IDEAS_PAGE_SIZE,
+    take: IDEAS_PAGE_SIZE,
   });
 
   return (
@@ -58,7 +87,7 @@ export default async function IdeasPage() {
       title="Ideas"
       description="Ideas are scoped to the current workspace and keep version history intact, so refinement never overwrites the original concept."
     >
-      {ideas.length === 0 ? (
+      {totalIdeas === 0 ? (
         <section className="rounded-[24px] border border-dashed border-slate-700/80 bg-card/70 p-8 text-center shadow-panel backdrop-blur">
           <p className="text-xs uppercase tracking-[0.24em] text-sky-200/80">
             /ideas
@@ -79,68 +108,119 @@ export default async function IdeasPage() {
           </Link>
         </section>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-2">
-          {ideas.map((idea) => {
-            const currentVersion = getCurrentIdeaVersion(idea);
+        <div className="grid gap-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-slate-800/80 bg-slate-950/50 px-4 py-3 text-sm text-slate-300">
+            <span>
+              Showing {(currentPage - 1) * IDEAS_PAGE_SIZE + 1}-
+              {Math.min(currentPage * IDEAS_PAGE_SIZE, totalIdeas)} of{" "}
+              {totalIdeas} ideas
+            </span>
+            <span>
+              Page {currentPage} of {totalPages}
+            </span>
+          </div>
 
-            return (
-              <section
-                key={idea.id}
-                className="rounded-[24px] border border-border bg-card/80 p-6 shadow-panel backdrop-blur transition hover:border-sky-400/30"
-              >
-                <Link href={`/ideas/${idea.id}`} className="block">
-                  <div className="space-y-3">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <IdeaStatusBadge status={idea.status} />
-                        {currentVersion ? (
-                          <IdeaVersionBadge type={currentVersion.type} />
-                        ) : null}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {ideas.map((idea) => {
+              const currentVersion = getCurrentIdeaVersion(idea);
+
+              return (
+                <section
+                  key={idea.id}
+                  className="rounded-[24px] border border-border bg-card/80 p-6 shadow-panel backdrop-blur transition hover:border-sky-400/30"
+                >
+                  <Link href={`/ideas/${idea.id}`} className="block">
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <IdeaStatusBadge status={idea.status} />
+                          {currentVersion ? (
+                            <IdeaVersionBadge type={currentVersion.type} />
+                          ) : null}
+                        </div>
+                        <p className="text-right text-xs text-slate-400">
+                          {formatDate(idea.createdAt)}
+                        </p>
                       </div>
-                      <p className="text-right text-xs text-slate-400">
-                        {formatDate(idea.createdAt)}
-                      </p>
-                    </div>
 
-                    <div>
-                      <h2 className="text-xl font-semibold text-white">
-                        {currentVersion?.title ?? idea.title}
-                      </h2>
-                      <p className="mt-2 text-sm leading-6 text-slate-300">
-                        {currentVersion?.shortDescription ?? idea.shortDescription}
-                      </p>
+                      <div>
+                        <h2 className="text-xl font-semibold text-white">
+                          {currentVersion?.title ?? idea.title}
+                        </h2>
+                        <p className="mt-2 text-sm leading-6 text-slate-300">
+                          {currentVersion?.shortDescription ??
+                            idea.shortDescription}
+                        </p>
+                      </div>
                     </div>
+                  </Link>
+
+                  <div className="mt-5 flex items-end justify-between gap-4">
+                    <div className="flex flex-wrap gap-3 text-sm text-slate-300">
+                      <span className="rounded-full border border-slate-800/80 bg-slate-950/60 px-3 py-1">
+                        Category:{" "}
+                        {currentVersion?.category ??
+                          idea.category ??
+                          "Unspecified"}
+                      </span>
+                      <span className="rounded-full border border-slate-800/80 bg-slate-950/60 px-3 py-1">
+                        Version:{" "}
+                        {currentVersion
+                          ? `${currentVersion.versionNumber}/${idea.versions.length}`
+                          : `N/A/${idea.versions.length}`}
+                      </span>
+                      <span className="rounded-full border border-slate-800/80 bg-slate-950/60 px-3 py-1">
+                        Overall score:{" "}
+                        {currentVersion?.overallScore !== null &&
+                        currentVersion?.overallScore !== undefined
+                          ? currentVersion.overallScore
+                          : "Pending"}
+                      </span>
+                    </div>
+                    <DeleteIdeaButton
+                      ideaId={idea.id}
+                      className="flex-shrink-0"
+                      label="Delete"
+                    />
                   </div>
+                </section>
+              );
+            })}
+          </div>
+
+          {totalPages > 1 ? (
+            <nav className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-slate-800/80 bg-slate-950/50 px-4 py-3 text-sm text-slate-300">
+              {currentPage > 1 ? (
+                <Link
+                  href={getIdeasPageHref(currentPage - 1)}
+                  className="rounded-full border border-slate-800/80 bg-slate-950/60 px-4 py-2 transition hover:border-sky-400/30 hover:text-white"
+                >
+                  Previous
                 </Link>
+              ) : (
+                <span className="rounded-full border border-slate-800/60 px-4 py-2 text-slate-600">
+                  Previous
+                </span>
+              )}
 
-                <div className="mt-5 flex items-end justify-between gap-4">
-                  <div className="flex flex-wrap gap-3 text-sm text-slate-300">
-                    <span className="rounded-full border border-slate-800/80 bg-slate-950/60 px-3 py-1">
-                      Category: {currentVersion?.category ?? idea.category ?? "Unspecified"}
-                    </span>
-                    <span className="rounded-full border border-slate-800/80 bg-slate-950/60 px-3 py-1">
-                      Version:{" "}
-                      {currentVersion
-                        ? `${currentVersion.versionNumber}/${idea.versions.length}`
-                        : `N/A/${idea.versions.length}`}
-                    </span>
-                    <span className="rounded-full border border-slate-800/80 bg-slate-950/60 px-3 py-1">
-                      Overall score:{" "}
-                      {currentVersion?.overallScore !== null &&
-                      currentVersion?.overallScore !== undefined
-                        ? currentVersion.overallScore
-                        : "Pending"}
-                    </span>
-                  </div>
-                  <DeleteIdeaButton
-                    ideaId={idea.id}
-                    className="flex-shrink-0"
-                    label="Delete"
-                  />
-                </div>
-              </section>
-            );
-          })}
+              <span>
+                Page {currentPage} of {totalPages}
+              </span>
+
+              {currentPage < totalPages ? (
+                <Link
+                  href={getIdeasPageHref(currentPage + 1)}
+                  className="rounded-full border border-slate-800/80 bg-slate-950/60 px-4 py-2 transition hover:border-sky-400/30 hover:text-white"
+                >
+                  Next
+                </Link>
+              ) : (
+                <span className="rounded-full border border-slate-800/60 px-4 py-2 text-slate-600">
+                  Next
+                </span>
+              )}
+            </nav>
+          ) : null}
         </div>
       )}
     </AppShell>

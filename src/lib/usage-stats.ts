@@ -11,58 +11,126 @@ function startOfMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
 }
 
-type UsageLogRecord = {
-  operationType: string;
-  agentName: string | null;
-  provider: string;
-  model: string;
-  totalTokens: number | null;
-  estimatedCostUsd: number | null;
-  createdAt: Date;
-  status: string;
-};
-
-function sumTokens(records: UsageLogRecord[]) {
-  return records.reduce((sum, record) => sum + (record.totalTokens ?? 0), 0);
-}
-
-function sumCost(records: UsageLogRecord[]) {
-  return records.reduce((sum, record) => sum + (record.estimatedCostUsd ?? 0), 0);
-}
-
-function groupByLabel<T extends string>(
-  records: UsageLogRecord[],
-  getLabel: (record: UsageLogRecord) => T,
+async function getUsageTotals(
+  workspaceId: string,
+  createdAt?: {
+    gte: Date;
+  },
 ) {
-  const map = new Map<T, { label: T; requests: number; tokens: number; cost: number }>();
-
-  for (const record of records) {
-    const label = getLabel(record);
-    const current = map.get(label) ?? {
-      label,
-      requests: 0,
-      tokens: 0,
-      cost: 0,
-    };
-
-    current.requests += 1;
-    current.tokens += record.totalTokens ?? 0;
-    current.cost += record.estimatedCostUsd ?? 0;
-
-    map.set(label, current);
-  }
-
-  return [...map.values()].sort((a, b) => b.requests - a.requests);
-}
-
-export async function getWorkspaceUsageStats(workspaceId: string) {
-  const now = new Date();
-  const dayStart = startOfDay(now);
-  const monthStart = startOfMonth(now);
-
-  const logs = await prisma.aiUsageLog.findMany({
+  const result = await prisma.aiUsageLog.aggregate({
     where: {
       workspaceId,
+      status: AiRequestStatus.SUCCESS,
+      ...(createdAt ? { createdAt } : {}),
+    },
+    _count: {
+      _all: true,
+    },
+    _sum: {
+      totalTokens: true,
+      estimatedCostUsd: true,
+    },
+  });
+
+  return {
+    requests: result._count._all,
+    tokens: result._sum.totalTokens ?? 0,
+    cost: result._sum.estimatedCostUsd ?? 0,
+  };
+}
+
+async function getUsageByOperation(workspaceId: string, monthStart: Date) {
+  const rows = await prisma.aiUsageLog.groupBy({
+    by: ["operationType"],
+    where: {
+      workspaceId,
+      status: AiRequestStatus.SUCCESS,
+      createdAt: {
+        gte: monthStart,
+      },
+    },
+    _count: {
+      _all: true,
+    },
+    _sum: {
+      totalTokens: true,
+      estimatedCostUsd: true,
+    },
+  });
+
+  return rows
+    .map((row) => ({
+      label: row.operationType,
+      requests: row._count._all,
+      tokens: row._sum.totalTokens ?? 0,
+      cost: row._sum.estimatedCostUsd ?? 0,
+    }))
+    .sort((a, b) => b.requests - a.requests);
+}
+
+async function getUsageByAgent(workspaceId: string, monthStart: Date) {
+  const rows = await prisma.aiUsageLog.groupBy({
+    by: ["agentName"],
+    where: {
+      workspaceId,
+      status: AiRequestStatus.SUCCESS,
+      createdAt: {
+        gte: monthStart,
+      },
+    },
+    _count: {
+      _all: true,
+    },
+    _sum: {
+      totalTokens: true,
+      estimatedCostUsd: true,
+    },
+  });
+
+  return rows
+    .map((row) => ({
+      label: row.agentName ?? "unknown",
+      requests: row._count._all,
+      tokens: row._sum.totalTokens ?? 0,
+      cost: row._sum.estimatedCostUsd ?? 0,
+    }))
+    .sort((a, b) => b.requests - a.requests);
+}
+
+async function getUsageByModel(workspaceId: string, monthStart: Date) {
+  const rows = await prisma.aiUsageLog.groupBy({
+    by: ["provider", "model"],
+    where: {
+      workspaceId,
+      status: AiRequestStatus.SUCCESS,
+      createdAt: {
+        gte: monthStart,
+      },
+    },
+    _count: {
+      _all: true,
+    },
+    _sum: {
+      totalTokens: true,
+      estimatedCostUsd: true,
+    },
+  });
+
+  return rows
+    .map((row) => ({
+      label: `${row.provider} / ${row.model}`,
+      requests: row._count._all,
+      tokens: row._sum.totalTokens ?? 0,
+      cost: row._sum.estimatedCostUsd ?? 0,
+    }))
+    .sort((a, b) => b.requests - a.requests);
+}
+
+async function getRecentFailures(workspaceId: string) {
+  return prisma.aiUsageLog.findMany({
+    where: {
+      workspaceId,
+      status: AiRequestStatus.FAILED,
     },
     select: {
       operationType: true,
@@ -77,32 +145,37 @@ export async function getWorkspaceUsageStats(workspaceId: string) {
     orderBy: {
       createdAt: "desc",
     },
+    take: 5,
   });
+}
 
-  const successfulLogs: UsageLogRecord[] = logs.filter(
-    (log) => log.status === AiRequestStatus.SUCCESS,
-  );
-
-  const todayLogs = successfulLogs.filter((log) => log.createdAt >= dayStart);
-  const monthLogs = successfulLogs.filter((log) => log.createdAt >= monthStart);
+export async function getWorkspaceUsageStats(workspaceId: string) {
+  const now = new Date();
+  const dayStart = startOfDay(now);
+  const monthStart = startOfMonth(now);
+  const [
+    todayTotals,
+    monthTotals,
+    byOperation,
+    byAgent,
+    byModel,
+    recentFailures,
+  ] = await Promise.all([
+    getUsageTotals(workspaceId, { gte: dayStart }),
+    getUsageTotals(workspaceId, { gte: monthStart }),
+    getUsageByOperation(workspaceId, monthStart),
+    getUsageByAgent(workspaceId, monthStart),
+    getUsageByModel(workspaceId, monthStart),
+    getRecentFailures(workspaceId),
+  ]);
 
   return {
-    today: {
-      requests: todayLogs.length,
-      tokens: sumTokens(todayLogs),
-      cost: sumCost(todayLogs),
-    },
-    month: {
-      requests: monthLogs.length,
-      tokens: sumTokens(monthLogs),
-      cost: sumCost(monthLogs),
-    },
-    byOperation: groupByLabel(monthLogs, (log) => log.operationType),
-    byAgent: groupByLabel(monthLogs, (log) => log.agentName ?? "unknown"),
-    byModel: groupByLabel(monthLogs, (log) => `${log.provider} / ${log.model}`),
-    recentFailures: logs
-      .filter((log) => log.status === AiRequestStatus.FAILED)
-      .slice(0, 5),
+    today: todayTotals,
+    month: monthTotals,
+    byOperation,
+    byAgent,
+    byModel,
+    recentFailures,
   };
 }
 
