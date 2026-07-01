@@ -472,6 +472,17 @@ Rules:
 - remove duplicates
 - prefer ideas the workspace owner can validate quickly
 - include criticism and execution risk in the final scoring
+- do not output generic product categories like "AI code extension" without a specific target user, painful workflow, and validation path
+- title must be specific enough to distinguish the idea from common startup templates
+- shortDescription must be 1 concise sentence under 28 words
+- fullDescription must be 3-5 concrete sentences that explain who it is for, what painful situation it solves, how it works, and why this workspace owner can test it
+- targetAudience must name a narrow buyer or user segment, not a broad market
+- problem and solution must each be specific 1-2 sentence fields
+- monetization must contain 3 concrete options with pricing logic, buyer, or sales channel
+- mvpFeatures must contain 3-5 validation-first features, not a full product roadmap
+- risks must contain 3-5 specific risks from the Builder, Investor, and Critic perspectives
+- firstSteps must contain 5 concrete actions the user can take in the next 7 days
+- scores must reflect the agent criticism; do not give high scores to vague or unvalidated ideas
 - return JSON only
 - use double-quoted JSON property names only
 - do not use markdown fences

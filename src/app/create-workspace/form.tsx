@@ -72,23 +72,6 @@ export function CreateWorkspaceForm() {
         />
       </div>
 
-      <div className="grid gap-2">
-        <label
-          htmlFor="creationCode"
-          className="text-sm font-medium text-slate-200"
-        >
-          Creation code
-        </label>
-        <input
-          id="creationCode"
-          name="creationCode"
-          type="password"
-          autoComplete="off"
-          placeholder="Private access code"
-          className="rounded-2xl border border-border bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-sky-400/50"
-        />
-      </div>
-
       {state.error ? (
         <p className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">
           {state.error}
