@@ -24,7 +24,6 @@ export async function createWorkspaceAction(
         "name",
         "password",
         "confirmPassword",
-        "creationCode",
       ] as const),
     );
 
@@ -32,18 +31,10 @@ export async function createWorkspaceAction(
       return { error: getFirstZodErrorMessage(validationResult.error) };
     }
 
-    const { name, password, creationCode } = validationResult.data;
-
-    if (!process.env.PROFILE_CREATION_CODE) {
-      return { error: "PROFILE_CREATION_CODE is not configured on the server." };
-    }
+    const { name, password } = validationResult.data;
 
     if (!process.env.SESSION_SECRET) {
       return { error: "SESSION_SECRET is not configured on the server." };
-    }
-
-    if (creationCode !== process.env.PROFILE_CREATION_CODE) {
-      return { error: "Invalid creation code." };
     }
 
     const existingWorkspace = await prisma.workspace.findFirst({
@@ -62,7 +53,7 @@ export async function createWorkspaceAction(
       return { error: "Workspace name is already taken." };
     }
 
-    const passwordHash = await bcrypt.hash(password, 12);
+    const passwordHash = await bcrypt.hash(password, 10);
 
     const workspace = await prisma.workspace.create({
       data: {

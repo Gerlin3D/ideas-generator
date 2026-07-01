@@ -19,10 +19,6 @@ export const createWorkspaceSchema = z
     confirmPassword: z
       .string()
       .min(1, "Complete all fields to create a workspace."),
-    creationCode: z
-      .string()
-      .trim()
-      .min(1, "Complete all fields to create a workspace."),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Password confirmation does not match.",

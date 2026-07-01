@@ -15,7 +15,7 @@ export default async function CreateWorkspacePage() {
   return (
     <PublicShell
       title="Create Workspace"
-      description="Create a private idea workspace with a protected creation code. Successful setup signs you in immediately and moves you into profile configuration."
+      description="Create a private idea workspace. Successful setup signs you in immediately and moves you into profile configuration."
     >
       <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
         <section className="rounded-[24px] border border-border bg-card/80 p-6 shadow-panel backdrop-blur">
@@ -26,9 +26,7 @@ export default async function CreateWorkspacePage() {
             Provision a private workspace
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-            Access is gated by a private creation code. Passwords are hashed on
-            the server, and a signed `httpOnly` session cookie is created
-            automatically after the workspace is saved.
+            This is your personal space for quick idea generation!
           </p>
 
           <div className="mt-8">
