@@ -13,6 +13,11 @@ const globalForPrisma = globalThis as unknown as {
 
 const adapter = new PrismaPg({
   connectionString,
+  // Keep the pool small and close idle connections quickly so a serverless
+  // Postgres (Neon) can suspend its compute instead of staying awake 24/7.
+  max: Number(process.env.DATABASE_POOL_MAX ?? 3),
+  idleTimeoutMillis: Number(process.env.DATABASE_POOL_IDLE_TIMEOUT_MS ?? 10_000),
+  allowExitOnIdle: true,
 });
 
 export const prisma =
